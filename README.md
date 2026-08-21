@@ -5,3 +5,7 @@
 ## Development
 
 - `npm install && npm run dev`
+
+## Chat
+
+See the [Jellyfin Discord server](https://jellyfin.org/contact/) in the `#documentation` channel.
