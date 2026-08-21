@@ -8,4 +8,4 @@
 
 ## Chat
 
-See the [Jellyfin Discord server](https://jellyfin.org/contact/) in the `#documentation` channel.
+See the [this Discord server](https://discord.gg/N76tDg2459)
