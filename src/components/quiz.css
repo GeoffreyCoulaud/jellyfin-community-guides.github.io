@@ -1,0 +1,243 @@
+/* The island sits in Starlight's markdown content, whose vertical rhythm would
+   space every button apart: `not-content` on the root turns all of it off, so
+   everything below is on us, links and headings included. */
+
+.quiz {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+.quiz p {
+	margin: 0;
+}
+
+.quiz ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.quiz a {
+	color: var(--sl-color-text-accent);
+}
+
+.quiz a:hover {
+	color: var(--sl-color-white);
+}
+
+.quiz-count,
+.quiz-note,
+.quiz-eyebrow {
+	color: var(--sl-color-gray-3);
+	font-size: var(--sl-text-sm);
+}
+
+.quiz-title {
+	margin: 0 0 0.75rem;
+	font-size: var(--sl-text-h4);
+	line-height: var(--sl-line-height-headings);
+	color: var(--sl-color-white);
+}
+
+.quiz-heading {
+	margin: 0 0 0.5rem;
+	font-size: var(--sl-text-sm);
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-2);
+}
+
+.quiz-block {
+	margin-top: 1.75rem;
+}
+
+/* Pros and cons face to face, stacked once there is no room for two. */
+.quiz-columns {
+	display: grid;
+	gap: 1.5rem;
+	align-items: start;
+}
+
+@media (min-width: 45rem) {
+	.quiz-columns {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
+.quiz-block .quiz-note {
+	margin-bottom: 0.5rem;
+}
+
+.quiz-cta {
+	font-weight: 600;
+}
+
+/* The help text sits right on top of the answers otherwise. */
+.quiz-note + .quiz-answers {
+	margin-top: 0.75rem;
+}
+
+.quiz-answers,
+.quiz-swaps,
+.quiz-links {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.quiz-answers button,
+.quiz-swaps button {
+	width: 100%;
+	text-align: left;
+	font: inherit;
+	color: var(--sl-color-white);
+	background: var(--sl-color-bg);
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.25rem;
+	padding: 0.5rem 0.75rem;
+	cursor: pointer;
+}
+
+.quiz-answers button:hover,
+.quiz-swaps button:hover {
+	border-color: var(--sl-color-text-accent);
+	background: var(--sl-color-gray-6);
+}
+
+.quiz-traits {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.quiz-traits li {
+	color: var(--sl-color-gray-2);
+	line-height: 1.5;
+}
+
+.quiz-pro::before {
+	content: "✓ ";
+	color: var(--sl-color-text-accent);
+}
+
+.quiz-con {
+	display: flex;
+	gap: 0.5rem;
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.quiz-con::before {
+	content: "✗ ";
+	color: var(--sl-color-gray-3);
+}
+
+.quiz-con span {
+	flex: 1;
+}
+
+.quiz-con button {
+	flex: none;
+	font: inherit;
+	font-size: var(--sl-text-xs);
+	color: var(--sl-color-gray-2);
+	background: none;
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.25rem;
+	padding: 0.15rem 0.5rem;
+	cursor: pointer;
+}
+
+.quiz-con button:hover {
+	color: var(--sl-color-white);
+	border-color: var(--sl-color-text-accent);
+}
+
+/* The question the answer belongs to, since neither reads alone. */
+.quiz-context {
+	display: block;
+	font-size: var(--sl-text-xs);
+	color: var(--sl-color-gray-3);
+}
+
+.quiz-value {
+	display: block;
+}
+
+.quiz-swaps .quiz-value::before {
+	content: "↺ ";
+	color: var(--sl-color-text-accent);
+}
+
+.quiz-links li::before {
+	content: "→ ";
+	color: var(--sl-color-gray-3);
+}
+
+.quiz-badge {
+	display: inline-block;
+	vertical-align: middle;
+	margin-right: 0.4rem;
+	padding: 0 0.3rem;
+	font-weight: 500;
+	line-height: 1.5;
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.2rem;
+	font-size: var(--sl-text-xs);
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-3);
+}
+
+.quiz-recap summary {
+	cursor: pointer;
+	color: var(--sl-color-gray-3);
+	font-size: var(--sl-text-sm);
+}
+
+.quiz-recap ol {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	margin: 0.5rem 0 0;
+	padding: 0;
+	list-style: none;
+	font-size: var(--sl-text-sm);
+}
+
+.quiz-recap button {
+	display: flex;
+	gap: 0.4rem;
+	align-items: baseline;
+	width: 100%;
+	padding: 0.25rem 0.4rem;
+	font: inherit;
+	color: var(--sl-color-gray-2);
+	text-align: left;
+	background: none;
+	border: 0;
+	border-radius: 0.25rem;
+	cursor: pointer;
+}
+
+.quiz-recap button:hover {
+	background: var(--sl-color-gray-6);
+	color: var(--sl-color-white);
+}
+
+.quiz-recap-text {
+	flex: 1;
+}
+
+/* Only worth showing on the row the pointer is on, one pencil at a time. */
+.quiz-edit {
+	opacity: 0;
+	color: var(--sl-color-text-accent);
+}
+
+.quiz-recap button:hover .quiz-edit,
+.quiz-recap button:focus-visible .quiz-edit {
+	opacity: 1;
+}

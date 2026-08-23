@@ -1,8 +1,17 @@
-import { keepAll, type Question, type Quiz } from "./engine";
+import {
+	con,
+	either,
+	keepAll,
+	pro,
+	type Choice,
+	type Question,
+	type Quiz,
+	type Trait,
+} from "./engine";
 
 /**
  * Only worth running when the resolved remote access method does not serve the
- * services over HTTPS itself, see its handlesTls property.
+ * services over HTTPS itself, see its handlesTlsForPublicServices property.
  */
 export type ReverseProxy = {
 	slug: string;
@@ -67,6 +76,18 @@ const reverseProxies = [
 		maxHandWrittenServices: null,
 	},
 	{
+		// Nginx Proxy Manager was the whole nginx family, which left anyone who
+		// already runs nginx and wants a config file with nothing at all.
+		slug: "nginx",
+		family: "nginx",
+		hasWebInterface: false,
+		isDockerNative: false,
+		isDependentOnThirdParty: false,
+		isHighBandwidthFriendly: true,
+		needsDomain: true,
+		maxHandWrittenServices: 5,
+	},
+	{
 		slug: "tailscale-funnel",
 		family: "tailscale",
 		hasWebInterface: false,
@@ -119,10 +140,14 @@ const questions = [
 	{
 		id: "high-bandwidth",
 		kind: "fact",
-		question: "Is one of them video streaming, like Jellyfin?",
+		// Streaming is what this site is about: never let a capped option through
+		asksFirst: true,
+		question: "Will one of your services stream video?",
+		help: "Jellyfin, for instance: video is what some proxies meter or forbid outright.",
 		answers: [
 			{ label: "Yes", keep: (p) => p.isHighBandwidthFriendly },
-			{ label: "No, all of them are light", keep: keepAll },
+			{ label: "No", keep: keepAll },
+			{ label: "I don't know", keep: (p) => p.isHighBandwidthFriendly },
 		],
 	},
 	{
@@ -159,11 +184,11 @@ const questions = [
 		],
 	},
 	{
-		id: "web-form-or-config-file",
+		id: "web-interface-or-config-file",
 		kind: "preference",
 		question: "How do you want to add a service?",
 		answers: [
-			{ label: "In a web form", keep: (p) => p.hasWebInterface },
+			{ label: "In a web interface", keep: (p) => p.hasWebInterface },
 			{ label: "In a config file", keep: (p) => !p.hasWebInterface },
 		],
 	},
@@ -172,6 +197,58 @@ const questions = [
 export const reverseProxyQuiz: Quiz<ReverseProxy> = {
 	options: reverseProxies,
 	questions,
+};
+
+/** The answer that rules an option out, to hang a dealbreaker button on. */
+const rulesOut = (id: string, label: string): Choice<ReverseProxy> => {
+	const question = questions.find((one) => one.id === id);
+	const answer = question?.answers.find((one) => one.label === label);
+	if (!question || !answer) throw new Error(`no "${label}" in "${id}"`);
+	return { question, answer };
+};
+
+/** What the proxy is like, whatever the quiz happened to ask. */
+export const traits = (proxy: ReverseProxy): Trait<ReverseProxy>[] => {
+	const list: Trait<ReverseProxy>[] = [
+		either(
+			proxy.isHighBandwidthFriendly,
+			"Streams video without complaint",
+			"Streaming video goes against its terms",
+			rulesOut("high-bandwidth", "Yes"),
+		),
+		either(
+			!proxy.isDependentOnThirdParty,
+			"Traffic goes straight from your server",
+			"Your traffic goes through a company's servers",
+			rulesOut("third-party", "No, straight from my server"),
+		),
+		either(
+			proxy.hasWebInterface,
+			"Services are added in a web interface",
+			"Services are added in a config file",
+			rulesOut("web-interface-or-config-file", "In a web interface"),
+		),
+		either(
+			!proxy.needsDomain,
+			"No domain to buy",
+			"A domain name of your own",
+			rulesOut("own-domain", "No, whatever address I am given"),
+		),
+	];
+
+	if (proxy.isDockerNative) list.push(pro("Containers declare their own routes"));
+
+	if (proxy.maxHandWrittenServices === null)
+		list.push(pro("As many services as you like"));
+	else
+		list.push(
+			con(
+				`Pleasant up to ${proxy.maxHandWrittenServices} service${proxy.maxHandWrittenServices > 1 ? "s" : ""}`,
+				rulesOut("how-many-services", "More than 5"),
+			),
+		);
+
+	return list;
 };
 
 /**

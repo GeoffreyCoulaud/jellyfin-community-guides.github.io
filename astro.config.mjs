@@ -18,6 +18,10 @@ export default defineConfig({
         ],
         sidebar: [
             {
+                label: "Quiz",
+                items: [{ autogenerate: { directory: "quiz" } }],
+            },
+            {
                 label: "Guides",
                 items: [
                     // Each item here is one entry in the navigation menu.
