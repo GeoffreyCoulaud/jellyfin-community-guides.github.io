@@ -1,0 +1,3 @@
+---
+title: "NetBird self-hosted"
+---
