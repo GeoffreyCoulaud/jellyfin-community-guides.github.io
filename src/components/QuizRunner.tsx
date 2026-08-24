@@ -2,7 +2,9 @@ import { useState } from "react";
 import {
 	applyAnswer,
 	blockers,
-	dropChoice,
+	confirm,
+	dropStep,
+	impediments,
 	liveAnswers,
 	nextQuestion,
 	reconsider,
@@ -10,11 +12,11 @@ import {
 	rewind,
 	startQuiz,
 	type Answer,
-	type Choice,
 	type Option,
 	type Question,
 	type Quiz,
 	type QuizState,
+	type Step,
 	type Trait,
 } from "../quiz/engine";
 import "./quiz.css";
@@ -30,8 +32,12 @@ type Props<O extends Option> = {
 	traits?: (option: O) => Trait<O>[];
 };
 
-const key = <O extends Option>(choice: Choice<O>) =>
-	`${choice.question.id}: ${choice.answer.label}`;
+const key = <O extends Option>(step: Step<O>) =>
+	`${step.question?.id ?? "dealbreaker"}: ${step.label}`;
+
+/** Softest first: a preference gives before a refusal, a refusal before a fact. */
+const givesFirst = <O extends Option>(step: Step<O>) =>
+	step.question === undefined ? 1 : step.question.kind === "preference" ? 0 : 2;
 
 /** Help texts carry the odd address, which is only useful as a link. */
 const linkify = (text: string) =>
@@ -45,35 +51,76 @@ const linkify = (text: string) =>
 		),
 	);
 
-/** Facts hold, preferences get weighed again: worth knowing before answering. */
-const Badge = <O extends Option>({ question }: { question: Question<O> }) => (
-	<span className="quiz-badge">
-		{question.kind === "fact" ? "Fact" : "Preference"}
-	</span>
+const Badge = ({ children }: { children: string }) => (
+	<span className="quiz-badge">{children}</span>
 );
 
-/** One answer, as a line of its question, so it reads without its context. */
-const Line = <O extends Option>({ choice }: { choice: Choice<O> }) => (
+/** Facts hold, preferences get weighed again: worth knowing before answering. */
+const kindOf = <O extends Option>(question: Question<O> | undefined) =>
+	question === undefined
+		? "Dealbreaker"
+		: question.kind === "fact"
+			? "Fact"
+			: "Preference";
+
+/** A step as a row: what it was, and what kind of thing it was. */
+const StepRow = <O extends Option>({ step }: { step: Step<O> }) => (
 	<>
-		<span className="quiz-context">{choice.question.question}</span>
-		<span className="quiz-value">{choice.answer.label}</span>
+		<Badge>{kindOf(step.question)}</Badge>
+		<span className="quiz-recap-text">
+			{step.question !== undefined && `${step.question.question} `}
+			<strong>{step.label}</strong>
+		</span>
 	</>
 );
 
+type ConfirmProps<O extends Option> = {
+	stoppers: readonly Step<O>[];
+	onStopper: (refused: Step<O>) => void;
+	onNone: () => void;
+};
+
+/**
+ * The last question, and the only one the pool cannot pose: what is about to be
+ * recommended carries these, and any one of them would make it unusable.
+ */
+const Confirm = <O extends Option>({
+	stoppers,
+	onStopper,
+	onNone,
+}: ConfirmProps<O>) => (
+	<section>
+		<h2 className="quiz-title">Would any of these stop you?</h2>
+		<p className="quiz-note">
+			What we are about to suggest comes with them. Say so and we look again.
+		</p>
+		<ul className="quiz-answers">
+			{stoppers.map((stopper) => (
+				<li key={stopper.label}>
+					<button type="button" onClick={() => onStopper(stopper)}>
+						{stopper.label}
+					</button>
+				</li>
+			))}
+			<li>
+				<button className="quiz-cta" type="button" onClick={onNone}>
+					None of these
+				</button>
+			</li>
+		</ul>
+	</section>
+);
+
 type ResultProps<O extends Option> = {
-	quiz: Quiz<O>;
-	state: QuizState<O>;
 	option: O;
 	alternatives: readonly O[];
 	doc: (option: O) => Doc;
 	guides?: (option: O) => Doc[];
 	traits?: (option: O) => Trait<O>[];
-	onDealbreaker: (dealbreaker: Choice<O>) => void;
+	onDealbreaker: (refused: Step<O>) => void;
 };
 
 const Result = <O extends Option>({
-	quiz,
-	state,
 	option,
 	alternatives,
 	doc,
@@ -130,19 +177,24 @@ const Result = <O extends Option>({
 							One&rsquo;s a dealbreaker? Say so to rerun the quiz
 						</p>
 						<ul className="quiz-traits">
-							{cons.map((trait) => (
-								<li className="quiz-con" key={trait.label}>
-									<span>{trait.label}</span>
-									{trait.dealbreaker !== undefined && (
-										<button
-											type="button"
-											onClick={() => onDealbreaker(trait.dealbreaker!)}
-										>
-											Dealbreaker
-										</button>
-									)}
-								</li>
-							))}
+							{cons.map((trait) => {
+								const refuse = trait.keep;
+								return (
+									<li className="quiz-con" key={trait.label}>
+										<span>{trait.label}</span>
+										{refuse !== undefined && (
+											<button
+												type="button"
+												onClick={() =>
+													onDealbreaker({ label: trait.label, keep: refuse })
+												}
+											>
+												Dealbreaker
+											</button>
+										)}
+									</li>
+								);
+							})}
 						</ul>
 					</div>
 				</div>
@@ -177,16 +229,13 @@ export const QuizRunner = <O extends Option>({
 
 	const recap = (
 		<ol>
-			{state.choices.map((choice, index) => (
-				<li key={choice.question.id}>
+			{state.steps.map((step, index) => (
+				<li key={key(step)}>
 					<button
 						type="button"
 						onClick={() => setState(rewind(quiz, state, index))}
 					>
-						<Badge question={choice.question} />
-						<span className="quiz-recap-text">
-							{choice.question.question} <strong>{choice.answer.label}</strong>
-						</span>
+						<StepRow step={step} />
 						<span className="quiz-edit" aria-hidden="true">
 							✎
 						</span>
@@ -199,6 +248,14 @@ export const QuizRunner = <O extends Option>({
 	const question = nextQuestion(quiz, state);
 	const outcome = resolve(quiz, state);
 	const left = state.pool.length;
+	const stoppers =
+		outcome.status === "resolved" && !state.confirmed
+			? impediments(quiz, state, traits?.(outcome.option) ?? [])
+			: [];
+	const stuck =
+		outcome.status === "over-constrained"
+			? [...blockers(quiz, state)].sort((a, b) => givesFirst(a) - givesFirst(b))
+			: [];
 
 	return (
 		<div className="quiz not-content">
@@ -209,7 +266,7 @@ export const QuizRunner = <O extends Option>({
 			{question !== undefined && (
 				<section>
 					<h2 className="quiz-title">
-						<Badge question={question} />
+						<Badge>{kindOf(question)}</Badge>
 						{question.question}
 					</h2>
 					{question.help !== undefined && (
@@ -227,38 +284,44 @@ export const QuizRunner = <O extends Option>({
 				</section>
 			)}
 
-			{outcome.status === "resolved" && (
-				<Result
-					quiz={quiz}
-					state={state}
-					option={outcome.option}
-					alternatives={outcome.alternatives}
-					doc={doc}
-					guides={guides}
-					traits={traits}
-					onDealbreaker={(dealbreaker) =>
-						setState(reconsider(quiz, state, dealbreaker))
-					}
-				/>
-			)}
+			{outcome.status === "resolved" &&
+				(stoppers.length > 0 ? (
+					<Confirm
+						stoppers={stoppers}
+						onStopper={(refused) => setState(reconsider(quiz, state, refused))}
+						onNone={() => setState(confirm(state))}
+					/>
+				) : (
+					<Result
+						option={outcome.option}
+						alternatives={outcome.alternatives}
+						doc={doc}
+						guides={guides}
+						traits={traits}
+						onDealbreaker={(refused) =>
+							setState(reconsider(quiz, state, refused))
+						}
+					/>
+				))}
 
 			{outcome.status === "over-constrained" && (
 				<section>
 					<h2 className="quiz-title">Nothing does all of that</h2>
-					{blockers(quiz, state).length > 0 ? (
+					{stuck.length > 0 ? (
 						<>
 							<p className="quiz-note">
-								Take one of these answers back and the quiz carries on from
-								there.
+								Take one back and it stops being a requirement. The question
+								comes back only if it still tells options apart.
 							</p>
 							<ul className="quiz-swaps">
-								{blockers(quiz, state).map((choice) => (
-									<li key={key(choice)}>
+								{stuck.map((step) => (
+									<li key={key(step)}>
 										<button
 											type="button"
-											onClick={() => setState(dropChoice(quiz, state, choice))}
+											onClick={() => setState(dropStep(quiz, state, step))}
 										>
-											<Line choice={choice} />
+											<StepRow step={step} />
+											<span className="quiz-action">↺ Take back</span>
 										</button>
 									</li>
 								))}
@@ -266,16 +329,16 @@ export const QuizRunner = <O extends Option>({
 						</>
 					) : (
 						<p className="quiz-note">
-							No single answer is enough here: two of them have to go.
+							No single one is enough here: two of them have to go.
 						</p>
 					)}
 				</section>
 			)}
 
-			{state.choices.length > 0 &&
+			{state.steps.length > 0 &&
 				(question === undefined ? (
 					<details className="quiz-recap">
-						<summary>Your answers ({state.choices.length})</summary>
+						<summary>Your answers ({state.steps.length})</summary>
 						{recap}
 					</details>
 				) : (

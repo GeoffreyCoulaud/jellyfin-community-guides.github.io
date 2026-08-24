@@ -1,9 +1,9 @@
 import {
+	blocking,
 	con,
 	either,
 	keepAll,
 	pro,
-	type Choice,
 	type Question,
 	type Quiz,
 	type Trait,
@@ -16,96 +16,129 @@ import {
 export type ReverseProxy = {
 	slug: string;
 	/** Which tool it is, for people who already run one of them. */
-	family: "caddy" | "traefik" | "nginx" | "tailscale" | "cloudflare";
-	/** Routes are added by clicking around, with no config file to write. */
+	family: "caddy" | "traefik" | "nginx" | "tailscale" | "zoraxy";
+	/**
+	 * The ways the proxy can be told about a service, each a capability and never
+	 * a commitment: Traefik and Caddy Docker Proxy read labels and a config file
+	 * both. Between them they have to cover every option, or the question that
+	 * offers them leaves someone with no answer to give.
+	 */
 	hasWebInterface: boolean;
-	/** Routes are declared with container labels instead of a config file. */
-	isDockerNative: boolean;
+	hasConfigFile: boolean;
+	readsContainerLabels: boolean;
+	isSetUpWithACommand: boolean;
 	isDependentOnThirdParty: boolean;
+	/** Ships as a container and nothing else, so Docker comes with it. */
+	needsDocker: boolean;
 	/** No bandwidth cap or terms of service getting in the way of video. */
 	isHighBandwidthFriendly: boolean;
 	needsDomain: boolean;
-	/** How many services stay pleasant to declare by hand. null: no limit. */
-	maxHandWrittenServices: number | null;
+	/**
+	 * Serves one machine name on three ports, so a second service goes on a path
+	 * rather than an address of its own.
+	 */
+	servesOneAddress: boolean;
 };
 
 /**
- * Declaration order breaks ties, simplest first: several of these are alike
- * once the user has no habit of any of them, and a beginner is better served
- * by a Caddyfile than by asking which of two unknown names they prefer.
+ * Declaration order breaks ties, simplest first: a beginner with no habit of
+ * any of them is better served by a Caddyfile than by a name they don't know.
  */
 const reverseProxies = [
 	{
 		slug: "caddy",
 		family: "caddy",
 		hasWebInterface: false,
-		isDockerNative: false,
+		hasConfigFile: true,
+		readsContainerLabels: false,
+		isSetUpWithACommand: false,
 		isDependentOnThirdParty: false,
+		needsDocker: false,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
-		maxHandWrittenServices: 5,
+		servesOneAddress: false,
 	},
 	{
 		slug: "traefik",
 		family: "traefik",
 		hasWebInterface: false,
-		isDockerNative: true,
+		hasConfigFile: true,
+		readsContainerLabels: true,
+		isSetUpWithACommand: false,
 		isDependentOnThirdParty: false,
+		needsDocker: false,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
-		maxHandWrittenServices: null,
+		servesOneAddress: false,
 	},
 	{
 		slug: "caddy-docker-proxy",
 		family: "caddy",
 		hasWebInterface: false,
-		isDockerNative: true,
+		hasConfigFile: true,
+		readsContainerLabels: true,
+		isSetUpWithACommand: false,
 		isDependentOnThirdParty: false,
+		needsDocker: true,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
-		maxHandWrittenServices: null,
+		servesOneAddress: false,
 	},
 	{
 		slug: "nginx-proxy-manager",
 		family: "nginx",
 		hasWebInterface: true,
-		isDockerNative: false,
+		hasConfigFile: false,
+		readsContainerLabels: false,
+		isSetUpWithACommand: false,
 		isDependentOnThirdParty: false,
+		needsDocker: true,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
-		maxHandWrittenServices: null,
+		servesOneAddress: false,
 	},
 	{
-		// Nginx Proxy Manager was the whole nginx family, which left anyone who
-		// already runs nginx and wants a config file with nothing at all.
+		// The only web interface that is not a container, which is what a spare
+		// Windows or Mac machine without Docker is otherwise left without
+		slug: "zoraxy",
+		family: "zoraxy",
+		hasWebInterface: true,
+		hasConfigFile: false,
+		readsContainerLabels: false,
+		isSetUpWithACommand: false,
+		isDependentOnThirdParty: false,
+		needsDocker: false,
+		isHighBandwidthFriendly: true,
+		needsDomain: true,
+		servesOneAddress: false,
+	},
+	{
+		// For the nginx habit that wants a config file, which Nginx Proxy Manager
+		// does not give
 		slug: "nginx",
 		family: "nginx",
 		hasWebInterface: false,
-		isDockerNative: false,
+		hasConfigFile: true,
+		readsContainerLabels: false,
+		isSetUpWithACommand: false,
 		isDependentOnThirdParty: false,
+		needsDocker: false,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
-		maxHandWrittenServices: 5,
+		servesOneAddress: false,
 	},
 	{
 		slug: "tailscale-funnel",
 		family: "tailscale",
 		hasWebInterface: false,
-		isDockerNative: false,
+		hasConfigFile: false,
+		readsContainerLabels: false,
+		isSetUpWithACommand: true,
 		isDependentOnThirdParty: true,
+		needsDocker: false,
 		isHighBandwidthFriendly: false,
 		needsDomain: false,
-		maxHandWrittenServices: 1,
-	},
-	{
-		slug: "cloudflare-proxy",
-		family: "cloudflare",
-		hasWebInterface: true,
-		isDockerNative: false,
-		isDependentOnThirdParty: true,
-		isHighBandwidthFriendly: false,
-		needsDomain: true,
-		maxHandWrittenServices: null,
+		servesOneAddress: true,
 	},
 ] as const satisfies readonly ReverseProxy[];
 
@@ -124,17 +157,12 @@ const questions = [
 		],
 	},
 	{
-		id: "how-many-services",
+		id: "docker",
 		kind: "fact",
-		question: "How many services will you expose?",
+		question: "Do you run Docker?",
 		answers: [
-			{ label: "Just one", keep: keepAll },
-			{
-				label: "2 to 5",
-				keep: (p) =>
-					p.maxHandWrittenServices === null || p.maxHandWrittenServices >= 5,
-			},
-			{ label: "More than 5", keep: (p) => p.maxHandWrittenServices === null },
+			{ label: "Yes", keep: keepAll },
+			{ label: "No", keep: (p) => !p.needsDocker },
 		],
 	},
 	{
@@ -148,15 +176,6 @@ const questions = [
 			{ label: "Yes", keep: (p) => p.isHighBandwidthFriendly },
 			{ label: "No", keep: keepAll },
 			{ label: "I don't know", keep: (p) => p.isHighBandwidthFriendly },
-		],
-	},
-	{
-		id: "docker",
-		kind: "fact",
-		question: "Do your services run in Docker?",
-		answers: [
-			{ label: "Yes", keep: keepAll },
-			{ label: "No", keep: (p) => !p.isDockerNative },
 		],
 	},
 	{
@@ -184,12 +203,17 @@ const questions = [
 		],
 	},
 	{
-		id: "web-interface-or-config-file",
+		id: "how-to-add-a-service",
 		kind: "preference",
 		question: "How do you want to add a service?",
 		answers: [
 			{ label: "In a web interface", keep: (p) => p.hasWebInterface },
-			{ label: "In a config file", keep: (p) => !p.hasWebInterface },
+			{ label: "In a config file", keep: (p) => p.hasConfigFile },
+			{
+				label: "On the container, as a label",
+				keep: (p) => p.readsContainerLabels,
+			},
+			{ label: "With one command", keep: (p) => p.isSetUpWithACommand },
 		],
 	},
 ] as const satisfies readonly Question<ReverseProxy>[];
@@ -199,52 +223,52 @@ export const reverseProxyQuiz: Quiz<ReverseProxy> = {
 	questions,
 };
 
-/** The answer that rules an option out, to hang a dealbreaker button on. */
-const rulesOut = (id: string, label: string): Choice<ReverseProxy> => {
-	const question = questions.find((one) => one.id === id);
-	const answer = question?.answers.find((one) => one.label === label);
-	if (!question || !answer) throw new Error(`no "${label}" in "${id}"`);
-	return { question, answer };
-};
-
-/** What the proxy is like, whatever the quiz happened to ask. */
+/**
+ * What the proxy is like, whatever the quiz happened to ask. Every con names the
+ * predicate it was read from, which the dealbreaker button filters on.
+ */
 export const traits = (proxy: ReverseProxy): Trait<ReverseProxy>[] => {
 	const list: Trait<ReverseProxy>[] = [
-		either(
-			proxy.isHighBandwidthFriendly,
-			"Streams video without complaint",
-			"Streaming video goes against its terms",
-			rulesOut("high-bandwidth", "Yes"),
+		blocking(
+			either(
+				proxy,
+				(one) => one.isHighBandwidthFriendly,
+				"Streams video without complaint",
+				"Streaming video goes against its terms",
+			),
 		),
 		either(
-			!proxy.isDependentOnThirdParty,
+			proxy,
+			(one) => !one.isDependentOnThirdParty,
 			"Traffic goes straight from your server",
 			"Your traffic goes through a company's servers",
-			rulesOut("third-party", "No, straight from my server"),
 		),
 		either(
-			proxy.hasWebInterface,
-			"Services are added in a web interface",
-			"Services are added in a config file",
-			rulesOut("web-interface-or-config-file", "In a web interface"),
-		),
-		either(
-			!proxy.needsDomain,
+			proxy,
+			(one) => !one.needsDomain,
 			"No domain to buy",
 			"A domain name of your own",
-			rulesOut("own-domain", "No, whatever address I am given"),
 		),
 	];
 
-	if (proxy.isDockerNative) list.push(pro("Containers declare their own routes"));
+	if (proxy.hasWebInterface)
+		list.push(pro("Services are added in a web interface"));
+	if (proxy.hasConfigFile)
+		list.push(
+			con("Services are added in a config file", (one) => one.hasWebInterface),
+		);
+	if (proxy.readsContainerLabels)
+		list.push(pro("Containers can declare their own routes"));
+	if (proxy.needsDocker)
+		list.push(blocking(con("Only runs in Docker", (one) => !one.needsDocker)));
+	if (proxy.isSetUpWithACommand)
+		list.push(pro("One command per service, nothing to edit"));
 
-	if (proxy.maxHandWrittenServices === null)
-		list.push(pro("As many services as you like"));
-	else
+	if (proxy.servesOneAddress)
 		list.push(
 			con(
-				`Pleasant up to ${proxy.maxHandWrittenServices} service${proxy.maxHandWrittenServices > 1 ? "s" : ""}`,
-				rulesOut("how-many-services", "More than 5"),
+				"Services share one address, on a path",
+				(one) => !one.servesOneAddress,
 			),
 		);
 
@@ -252,7 +276,10 @@ export const traits = (proxy: ReverseProxy): Trait<ReverseProxy>[] => {
 };
 
 /**
- * Cloudflare Zero Trust is deliberately absent: Access is an authentication
- * layer bolted on top of the tunnel or the proxy, not another reverse proxy to
- * choose between.
+ * Cloudflare is deliberately absent. The orange cloud maps every proxied
+ * hostname to one origin address, so something at home still dispatches by Host
+ * header: it goes in front of a reverse proxy, it is not one. Tunnel does route
+ * hostnames to local services and serves HTTPS itself, so it lives in the remote
+ * access quiz and nobody who picks it is sent here. Zero Trust is an
+ * authentication layer on top of either.
  */

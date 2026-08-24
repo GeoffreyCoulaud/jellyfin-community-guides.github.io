@@ -11,9 +11,9 @@ const titles: Record<ReverseProxySlug, string> = {
 	traefik: "Traefik",
 	"caddy-docker-proxy": "Caddy Docker Proxy",
 	"nginx-proxy-manager": "Nginx Proxy Manager",
+	zoraxy: "Zoraxy",
 	nginx: "Nginx",
 	"tailscale-funnel": "Tailscale Funnel",
-	"cloudflare-proxy": "Cloudflare proxy",
 };
 
 const doc = (proxy: ReverseProxy): Doc => ({

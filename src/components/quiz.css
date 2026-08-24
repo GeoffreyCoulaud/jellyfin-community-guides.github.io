@@ -155,19 +155,17 @@
 	border-color: var(--sl-color-text-accent);
 }
 
-/* The question the answer belongs to, since neither reads alone. */
-.quiz-context {
-	display: block;
+/* Same row as the recap, with the action spelled out: a row showing nothing but
+   an answer reads as an answer, which is what made this screen unclear. */
+.quiz-swaps button {
+	display: flex;
+	gap: 0.4rem;
+	align-items: baseline;
+}
+
+.quiz-action {
+	flex: none;
 	font-size: var(--sl-text-xs);
-	color: var(--sl-color-gray-3);
-}
-
-.quiz-value {
-	display: block;
-}
-
-.quiz-swaps .quiz-value::before {
-	content: "↺ ";
 	color: var(--sl-color-text-accent);
 }
 

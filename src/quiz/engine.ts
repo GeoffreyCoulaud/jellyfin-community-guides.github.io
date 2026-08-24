@@ -1,10 +1,8 @@
 /**
  * Options are described by properties, questions partition them: each answer
- * keeps the options matching it, so answering prunes the pool until a single
- * option is left.
- *
- * Question order is derived instead of hardcoded: a question is only asked
- * while its answers still split the remaining pool.
+ * keeps the options matching it, so answering prunes the pool until one is
+ * left. Order is derived, never hardcoded: a question is asked only while its
+ * answers still split the pool.
  */
 
 export type Option = { slug: string };
@@ -21,16 +19,15 @@ export type Question<O extends Option> = {
 	/** Shown next to the question, for the ones nobody can answer as written. */
 	help?: string;
 	/**
-	 * Pinned to the front of the order. For the gate whose omission would put a
-	 * plainly wrong option on the screen, which the greedy pick would otherwise
-	 * leave for last and never reach. Keep this to the few that earn it.
+	 * Pinned to the front. For the questions a later preference depends on: being
+	 * asked where connections should arrive, before knowing whether a port can be
+	 * opened, reads as a free choice when it is not one.
 	 */
 	asksFirst?: boolean;
 	/**
-	 * A fact about the user or their network, not up for debate. A preference is
-	 * what they would rather have. Order does not follow from this any more,
-	 * every question is asked when it prunes the most: what it decides is
-	 * `reconsider`, where the facts hold and the preferences are weighed again.
+	 * A fact about the user or their network, against a preference they could be
+	 * talked out of. What it decides is `reconsider`: facts hold, preferences are
+	 * weighed again.
 	 */
 	kind: "fact" | "preference";
 	answers: readonly Answer<O>[];
@@ -40,33 +37,50 @@ export type Quiz<O extends Option> = {
 	options: readonly O[];
 	questions: readonly Question<O>[];
 	/**
-	 * Nothing left to ask tells these two apart, yet one is plainly the worse
-	 * deal: paying for what the free plan already covers. It is dropped from the
-	 * alternatives rather than offered as just as good.
+	 * Nothing left to ask tells these apart, yet one is plainly worse: paying for
+	 * what the free plan already covers. Dropped, not offered as just as good.
 	 */
 	worseThan?: (candidate: O, other: O) => boolean;
 };
 
-/** An answer the user picked, kept so that the quiz can be replayed. */
-export type Choice<O extends Option> = {
-	question: Question<O>;
-	answer: Answer<O>;
+/**
+ * Something the user told us: an answer, or a con they refused outright. Both
+ * narrow the pool, which is all the engine needs from them.
+ */
+export type Step<O extends Option> = {
+	/** The answer picked, or the con refused. */
+	label: string;
+	keep: (option: O) => boolean;
+	/** The question answered. Absent when a con was refused instead. */
+	question?: Question<O>;
 };
 
 /**
  * A plain fact about one option, pro or con, written without knowing what the
- * user answered. A con carries the answer that would rule the option out, so
- * the screen can offer to treat it as a dealbreaker.
+ * user answered. A con keeps the predicate it was read from, so calling it a
+ * dealbreaker needs no question worded as its refusal.
  */
 export type Trait<O extends Option> = {
 	label: string;
 	tone: "pro" | "con";
-	dealbreaker?: Choice<O>;
+	/** Options left standing once this con is a dealbreaker. */
+	keep?: (option: O) => boolean;
+	/**
+	 * Stops someone using the option at all, rather than merely costing them
+	 * something. Only these are put to the user before a recommendation; the rest
+	 * stay on the card, refusable all the same.
+	 */
+	blocks?: boolean;
 };
 
 export type QuizState<O extends Option> = {
 	pool: readonly O[];
-	choices: readonly Choice<O>[];
+	steps: readonly Step<O>[];
+	/**
+	 * The impediments were shown and waved through. Never carried over: any step
+	 * builds a fresh state, so the next candidate is confirmed on its own terms.
+	 */
+	confirmed?: boolean;
 };
 
 export const keepAll = () => true;
@@ -78,17 +92,23 @@ export const pro = <O extends Option>(label: string): Trait<O> => ({
 
 export const con = <O extends Option>(
 	label: string,
-	dealbreaker?: Choice<O>,
-): Trait<O> =>
-	dealbreaker ? { label, tone: "con", dealbreaker } : { label, tone: "con" };
+	keep?: (option: O) => boolean,
+): Trait<O> => (keep ? { label, tone: "con", keep } : { label, tone: "con" });
 
-/** One axis with two faces: the option lands on the good one or the bad one. */
+/** A con that stops someone using the option, not one that costs them. */
+export const blocking = <O extends Option>(trait: Trait<O>): Trait<O> =>
+	trait.tone === "con" ? { ...trait, blocks: true } : trait;
+
+/**
+ * One axis, two faces: refusing the downside is nothing but asking for the
+ * options where the predicate holds.
+ */
 export const either = <O extends Option>(
-	good: boolean,
+	option: O,
+	holds: (option: O) => boolean,
 	upside: string,
 	downside: string,
-	dealbreaker?: Choice<O>,
-): Trait<O> => (good ? pro(upside) : con(downside, dealbreaker));
+): Trait<O> => (holds(option) ? pro(upside) : con(downside, holds));
 
 const outcomes = <O extends Option>(
 	question: Question<O>,
@@ -118,19 +138,16 @@ const splitsPool = <O extends Option>(
 
 export const startQuiz = <O extends Option>(quiz: Quiz<O>): QuizState<O> => ({
 	pool: quiz.options,
-	choices: [],
+	steps: [],
 });
 
 const wasAsked = <O extends Option>(state: QuizState<O>, id: string) =>
-	state.choices.some((choice) => choice.question.id === id);
+	state.steps.some((step) => step.question?.id === id);
 
 /**
  * The greedy pick: prunes the most in the worst case, declaration order breaks
- * ties, and `asksFirst` jumps the queue. Facts used to come first, which read as
- * thorough but cost four questions a run, most of them ruling nothing out, and
- * kept asking how many people a plan has to serve long after the answer could
- * change anything. The price of dropping that tier is an opening question that
- * can be a preference, HTTPS before port forwarding. Measured, and accepted.
+ * ties, `asksFirst` jumps the queue. No tier puts facts first: what a question
+ * fails to catch, `impediments` catches.
  */
 export const nextQuestion = <O extends Option>(
 	quiz: Quiz<O>,
@@ -148,9 +165,8 @@ export const nextQuestion = <O extends Option>(
 };
 
 /**
- * Answers still leading somewhere. Offering one that empties the pool asks the
- * user to pick a dead end, which is worse than not offering it: the question is
- * only on screen because some other answer does lead somewhere.
+ * Answers still leading somewhere: offering one that empties the pool asks the
+ * user to pick a dead end.
  */
 export const liveAnswers = <O extends Option>(
 	question: Question<O>,
@@ -163,16 +179,15 @@ export const applyAnswer = <O extends Option>(
 	answer: Answer<O>,
 ): QuizState<O> => ({
 	pool: state.pool.filter(answer.keep),
-	choices: [...state.choices, { question, answer }],
+	steps: [...state.steps, { label: answer.label, keep: answer.keep, question }],
 });
 
 /**
- * "over-constrained": every option is ruled out, so the honest answer is to
- * not set up remote access (or to walk back one answer).
- * "resolved": `alternatives` holds the options no remaining question can tell
- * apart from the recommended one, so declaration order picks the default. The
- * plainly worse deals drop out first, of the recommendation as much as of the
- * alternatives: nothing separates them any more, so nothing excuses them.
+ * "over-constrained": every option is ruled out, so the honest answer is to set
+ * none of this up, or to walk one answer back.
+ * "resolved": `alternatives` holds what no remaining question tells apart from
+ * the recommendation, declaration order picking which of them leads. The worse
+ * deals drop out of both: nothing separates them any more, nothing excuses them.
  */
 export const resolve = <O extends Option>(
 	quiz: Quiz<O>,
@@ -187,67 +202,91 @@ export const resolve = <O extends Option>(
 	return { status: "resolved", option: first, alternatives } as const;
 };
 
-/** Answers only ever narrow the pool, so dropping one means replaying them all. */
-const fromChoices = <O extends Option>(
+/**
+ * What could stop someone using this option, ready to be put to them as a
+ * question before it is recommended. A con that merely costs something is not
+ * in here: it stays on the card, where its Dealbreaker button still refuses it.
+ */
+export const impediments = <O extends Option>(
 	quiz: Quiz<O>,
-	choices: readonly Choice<O>[],
+	state: QuizState<O>,
+	traits: readonly Trait<O>[],
+) =>
+	traits.flatMap((trait) => {
+		const keep = trait.keep;
+		if (trait.tone !== "con" || trait.blocks !== true || keep === undefined)
+			return [];
+		const settled = state.steps.some(
+			(step) =>
+				// The axis was put to them, whichever way they answered it
+				step.question?.answers.some((answer) =>
+					quiz.options.every((option) => answer.keep(option) === keep(option)),
+				) ||
+				// Or what they picked implies it: everything it kept carries this con
+				quiz.options.filter(step.keep).every((option) => !keep(option)),
+		);
+		return settled ? [] : [{ label: trait.label, keep }];
+	});
+
+/** Waved through: the impediments were shown and none of them applied. */
+export const confirm = <O extends Option>(state: QuizState<O>): QuizState<O> => ({
+	...state,
+	confirmed: true,
+});
+
+/** Steps only ever narrow the pool, so dropping one means replaying them all. */
+const replay = <O extends Option>(
+	quiz: Quiz<O>,
+	steps: readonly Step<O>[],
 ): QuizState<O> => ({
-	pool: quiz.options.filter((option) =>
-		choices.every((choice) => choice.answer.keep(option)),
-	),
-	choices,
+	pool: quiz.options.filter((option) => steps.every((step) => step.keep(option))),
+	steps,
 });
 
 /**
- * Turn a con into a dealbreaker: the user's situation still holds, the answer
- * that rules it out becomes a requirement, and preferences are weighed again.
+ * Turn a con into a dealbreaker: every option carrying it leaves for good, the
+ * facts hold, the preferences are weighed again. Earlier dealbreakers stay.
  */
 export const reconsider = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
-	dealbreaker: Choice<O>,
+	refused: Step<O>,
 ): QuizState<O> =>
-	fromChoices(quiz, [
-		...state.choices.filter(
-			(choice) =>
-				choice.question.kind === "fact" &&
-				// It answers that question now, so the old answer cannot stand
-				choice.question.id !== dealbreaker.question.id,
-		),
-		dealbreaker,
+	replay(quiz, [
+		...state.steps.filter((step) => step.question?.kind !== "preference"),
+		refused,
 	]);
 
-/** Back to just before that answer, dropping it and everything after it. */
+/** Back to just before that step, dropping it and everything after it. */
 export const rewind = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
 	index: number,
-): QuizState<O> => fromChoices(quiz, state.choices.slice(0, index));
+): QuizState<O> => replay(quiz, state.steps.slice(0, index));
 
-/** Take one answer back, a blocker being the reason to. */
-export const dropChoice = <O extends Option>(
+/** Take one step back, a blocker being the reason to. */
+export const dropStep = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
-	dropped: Choice<O>,
+	dropped: Step<O>,
 ): QuizState<O> =>
-	fromChoices(
+	replay(
 		quiz,
-		state.choices.filter((choice) => choice !== dropped),
+		state.steps.filter((step) => step !== dropped),
 	);
 
 /**
- * Nothing is left, so at least one answer has to give. These are the ones that,
- * taken back on their own, would open the pool up again. An empty list means no
- * single answer is enough: two of them have to go.
+ * Nothing is left, so a step has to give: the ones that, taken back on their
+ * own, open the pool up again. Empty means two of them have to go.
  */
 export const blockers = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
-): Choice<O>[] =>
-	state.choices.filter((dropped) =>
+): Step<O>[] =>
+	state.steps.filter((dropped) =>
 		quiz.options.some((option) =>
-			state.choices
-				.filter((choice) => choice !== dropped)
-				.every((choice) => choice.answer.keep(option)),
+			state.steps
+				.filter((step) => step !== dropped)
+				.every((step) => step.keep(option)),
 		),
 	);

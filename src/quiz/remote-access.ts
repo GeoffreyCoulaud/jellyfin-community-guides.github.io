@@ -1,15 +1,29 @@
 import {
+	blocking,
 	con,
 	either,
 	keepAll,
 	pro,
-	type Choice,
 	type Question,
 	type Quiz,
 	type Trait,
 } from "./engine";
 
 type Money = { amount: number; currency: "EUR" | "USD" };
+
+type Seat = Money & { per: "user" | "device" };
+
+/**
+ * The monthly bill. Not one number, because a flat fee that covers a handful of
+ * seats and charges for the rest is a real shape: ZeroTier asks 18 USD before
+ * the eleventh device, which "2 USD per device" on its own hides.
+ */
+type Price =
+	| { perSeat: Seat; fixed?: undefined }
+	| { fixed: Money; seatsIncluded: number; perSeat: Seat };
+
+/** Pushing an APK yourself is a real cost, and it is not the same as no app. */
+type TvClient = "official" | "sideload" | "none";
 
 /**
  * What the method needs from your home network to let connections in.
@@ -44,9 +58,9 @@ export type Method = {
 	 */
 	handlesTlsForPrivateServices: boolean;
 	/**
-	 * Every service at home is reachable, even the ones you never published.
-	 * Not pruned on: read off the resolved method to pick extra guides. What the
-	 * guide sets up by default, since routes and ACLs can narrow it down.
+	 * Every service at home is reachable, even the ones you never published, as
+	 * the guide sets it up: routes and ACLs can narrow it down. Not pruned on,
+	 * read off the resolved method to pick extra guides.
 	 */
 	reachesEveryLocalService: boolean;
 	/** Coordination or traffic goes through a service you don't run. */
@@ -58,19 +72,28 @@ export type Method = {
 	isHighBandwidthFriendly: boolean;
 	hasProprietaryComponent: boolean;
 	/**
-	 * Users reach the services by name, with no raw IP address to remember.
-	 * Not pruned on: a DNS zone gets any method there, so it picks up a guide
-	 * instead of ruling anything out.
+	 * Users reach the services by name, no raw IP address to remember. Not pruned
+	 * on: a DNS zone gets any method there, so it earns a guide, not a bad mark.
 	 */
 	hasBuiltInNameResolution: boolean;
 	/** Users, devices and routes are managed in a browser, not on a terminal. */
 	hasWebInterface: boolean;
+	/**
+	 * How far the client gets onto a box people watch on. Never read on its own:
+	 * a method that publishes a public address has no client at all, so "none"
+	 * there means nothing to install rather than nothing that works.
+	 */
+	appleTv: "official" | "none"; // tvOS installs what the App Store carries
+	/** Android TV and Google TV, which the Play Store serves. */
+	androidTv: TvClient;
+	/** The Amazon Appstore carries far fewer of these than the Play Store. */
+	fireTv: TvClient;
 	/** How many people this plan serves. null: no limit. */
 	maxUsers: number | null;
 	/** How many connected devices this plan serves. null: no limit. */
 	maxDevices: number | null;
 	/** What it costs every month. null: free. */
-	price: (Money & { per: "user" | "device" }) | null;
+	price: Price | null;
 	setupSteps: readonly SetupStep[];
 	/** Not pruned on, read off the resolved method to pick extra guides. */
 	needsDomain: boolean;
@@ -98,6 +121,9 @@ const tailscale = {
 	isHighBandwidthFriendly: true,
 	hasProprietaryComponent: true,
 	hasBuiltInNameResolution: true,
+	appleTv: "official",
+	androidTv: "official",
+	fireTv: "official",
 	hasWebInterface: true,
 	setupSteps: ["install-package"],
 	needsDomain: false,
@@ -116,6 +142,9 @@ const netbirdCloud = {
 	isHighBandwidthFriendly: true,
 	hasProprietaryComponent: false,
 	hasBuiltInNameResolution: true,
+	appleTv: "official",
+	androidTv: "official",
+	fireTv: "sideload",
 	hasWebInterface: true,
 	setupSteps: ["install-package"],
 	needsDomain: false,
@@ -133,6 +162,10 @@ const zerotier = {
 	isHighBandwidthFriendly: true,
 	hasProprietaryComponent: true,
 	hasBuiltInNameResolution: false,
+	appleTv: "none",
+	// Documented for neither: their install page knows the Play Store and an APK
+	androidTv: "sideload",
+	fireTv: "sideload",
 	hasWebInterface: true,
 	setupSteps: ["install-package"],
 	needsDomain: false,
@@ -151,6 +184,9 @@ const pangolin = {
 	handlesTlsForPublicServices: true,
 	isHighBandwidthFriendly: true,
 	hasBuiltInNameResolution: true,
+	appleTv: "none",
+	androidTv: "none",
+	fireTv: "none",
 	hasWebInterface: true,
 	setupSteps: ["docker-compose"],
 	needsDomain: true,
@@ -199,6 +235,9 @@ const methods = [
 		isHighBandwidthFriendly: true,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
+		appleTv: "none",
+		androidTv: "none",
+		fireTv: "none",
 		hasWebInterface: false,
 		// Serving the services themselves is the reverse proxy quiz's job
 		setupSteps: [],
@@ -206,8 +245,8 @@ const methods = [
 	},
 	{
 		...unlimitedAndFree,
-		// Declared after port-forward on purpose: half of the internet still
-		// reaches servers over IPv4, so it never wins a tie against it.
+		// Only reachable by someone who cannot forward a port: IPv4 reaches
+		// everyone, so answering yes to that question drops this one
 		slug: "ipv6",
 		servesPublicServices: true,
 		servesPrivateServices: false,
@@ -221,6 +260,9 @@ const methods = [
 		isHighBandwidthFriendly: true,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
+		appleTv: "none",
+		androidTv: "none",
+		fireTv: "none",
 		hasWebInterface: false,
 		setupSteps: [],
 		needsDomain: true,
@@ -240,6 +282,9 @@ const methods = [
 		isHighBandwidthFriendly: true,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
+		appleTv: "none",
+		androidTv: "none",
+		fireTv: "none",
 		hasWebInterface: false,
 		setupSteps: ["install-package", "edit-config-file"],
 		needsDomain: true,
@@ -258,6 +303,10 @@ const methods = [
 		isHighBandwidthFriendly: true,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: false,
+		appleTv: "none",
+		// A leanback launcher in its manifest, and a TV interface of its own
+		androidTv: "official",
+		fireTv: "sideload",
 		hasWebInterface: false,
 		setupSteps: ["install-package", "edit-config-file", "per-user-key-exchange"],
 		needsDomain: false,
@@ -275,7 +324,7 @@ const methods = [
 		slug: "tailscale-standard",
 		maxUsers: null,
 		maxDevices: null,
-		price: { amount: 8, currency: "USD", per: "user" },
+		price: { perSeat: { amount: 8, currency: "USD", per: "user" } },
 	},
 	{
 		...unlimitedAndFree,
@@ -294,6 +343,9 @@ const methods = [
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
 		// Third party ones exist, the project itself is a command line
+		appleTv: "official",
+		androidTv: "official",
+		fireTv: "official",
 		hasWebInterface: false,
 		setupSteps: ["docker-compose", "edit-config-file"],
 		needsDomain: true,
@@ -311,7 +363,7 @@ const methods = [
 		maxUsers: null,
 		// 100 machines plus 10 per user are included, extra ones are 0.50 EUR
 		maxDevices: null,
-		price: { amount: 6, currency: "EUR", per: "user" },
+		price: { perSeat: { amount: 6, currency: "EUR", per: "user" } },
 	},
 	{
 		...unlimitedAndFree,
@@ -327,6 +379,9 @@ const methods = [
 		isHighBandwidthFriendly: true,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
+		appleTv: "official",
+		androidTv: "official",
+		fireTv: "sideload",
 		hasWebInterface: true,
 		setupSteps: ["docker-compose", "edit-config-file"],
 		needsDomain: true,
@@ -344,9 +399,11 @@ const methods = [
 		slug: "zerotier-essential",
 		maxUsers: null,
 		maxDevices: null,
-		// Essential opens at 18 USD for ten devices, then charges for each one
-		// on top: only that marginal price is modelled here.
-		price: { amount: 2, currency: "USD", per: "device" },
+		price: {
+			fixed: { amount: 18, currency: "USD" },
+			seatsIncluded: 10,
+			perSeat: { amount: 2, currency: "USD", per: "device" },
+		},
 	},
 	{
 		...unlimitedAndFree,
@@ -363,6 +420,9 @@ const methods = [
 		isHighBandwidthFriendly: false,
 		hasProprietaryComponent: true,
 		hasBuiltInNameResolution: true,
+		appleTv: "none",
+		androidTv: "none",
+		fireTv: "none",
 		hasWebInterface: true,
 		setupSteps: ["install-package"],
 		needsDomain: true,
@@ -390,6 +450,25 @@ const worksWithoutPublicIpv6 = (method: Method) =>
 const handlesTlsItself = (method: Method) =>
 	method.handlesTlsForPublicServices || method.handlesTlsForPrivateServices;
 
+/** Nothing to install, so any box with a Jellyfin app or a browser gets there. */
+const worksOnAnyTv = (method: Method) => method.servesPublicServices;
+
+/** One line per box people watch on: the three stores differ. */
+const tvTrait = (
+	device: string,
+	method: Method,
+	client: (one: Method) => TvClient,
+): Trait<Method> => {
+	const installs = (one: Method) =>
+		worksOnAnyTv(one) || client(one) === "official";
+	const worksOn = (one: Method) => worksOnAnyTv(one) || client(one) !== "none";
+	if (client(method) === "official")
+		return pro(`${device} installs it from the store`);
+	if (client(method) === "sideload")
+		return con(`${device} needs its app sideloaded`, installs);
+	return blocking(con(`${device} cannot install it`, worksOn));
+};
+
 /** Clients aim at your home address, which your ISP can change under you. */
 const isReachedAtHome = (method: Method) =>
 	method.homeNetworkRequirement !== "nothing";
@@ -412,18 +491,25 @@ const servesUsers = (users: number) => (method: Method) =>
 const servesDevices = (devices: number) => (method: Method) =>
 	method.maxDevices === null || method.maxDevices >= devices;
 
-/** Answers read yes, then no, then "I don't know": the safe side of a fact,
- * nothing at all on a preference. */
+/**
+ * Answers read yes, then no, then "I don't know": the safe side of a fact,
+ * nothing at all on a preference.
+ */
 const questions = [
 	{
 		id: "port-forwarding",
 		kind: "fact",
-		// Gates the "at home" entry point, and CGNAT is nobody's choice
+		// What a home line can do at all, before asking where connections land
 		asksFirst: true,
 		question: "Can you set up port forwarding on your router?",
 		help: "Port forwarding tells your router to send connections arriving on a given port to your server. It lives in your router's admin page, sometimes under NAT or virtual servers. It also takes a public IPv4 address: under CGNAT your ISP shares one between several homes, and no port can be opened. Compare the address your router shows with the one a what-is-my-ip website reports, different means CGNAT. https://en.wikipedia.org/wiki/Carrier-grade_NAT",
 		answers: [
-			{ label: "Yes", keep: keepAll },
+			{
+				// Not keepAll: the IPv6-only route is the same setup minus the users
+				// whose ISP has no IPv6, so a forwarded port makes it pointless
+				label: "Yes",
+				keep: worksWithoutPublicIpv6,
+			},
 			{ label: "No, or I'd rather not", keep: worksWithoutForwardedPort },
 			{ label: "I don't know", keep: worksWithoutForwardedPort },
 		],
@@ -431,7 +517,6 @@ const questions = [
 	{
 		id: "public-ipv6",
 		kind: "fact",
-		// The other way home stays reachable, same reason
 		asksFirst: true,
 		question: "Will every one of your users have public IPv6?",
 		answers: [
@@ -520,6 +605,18 @@ const questions = [
 		],
 	},
 	{
+		id: "watching-devices",
+		kind: "fact",
+		question:
+			"Will an LG or Samsung TV, a Roku, or a console need to reach your services?",
+		help: "Their stores carry no VPN client at all. An Apple TV, an Android TV or a Fire TV can run one, televisions that run Android TV included, though not every tool has an app for all three.",
+		answers: [
+			{ label: "Yes", keep: worksOnAnyTv },
+			{ label: "No", keep: keepAll },
+			{ label: "I don't know", keep: worksOnAnyTv },
+		],
+	},
+	{
 		id: "client-application",
 		kind: "preference",
 		question: "How should your users connect?",
@@ -586,68 +683,49 @@ export const remoteAccessQuiz: Quiz<Method> = {
 	worseThan,
 };
 
-/** The answer that rules an option out, to hang a dealbreaker button on. */
-const rulesOut = (id: string, label: string): Choice<Method> => {
-	const question = questions.find((one) => one.id === id);
-	const answer = question?.answers.find((one) => one.label === label);
-	if (!question || !answer) throw new Error(`no "${label}" in "${id}"`);
-	return { question, answer };
-};
+const money = ({ amount, currency }: Money) => `${amount} ${currency}`;
 
-/**
- * Same, for an objection no single answer covers: not renting a server leaves
- * two of the three entry points open, so the dealbreaker is the complement.
- */
-const rulesOutWhen = (
-	id: string,
-	label: string,
-	keep: (method: Method) => boolean,
-): Choice<Method> => {
-	const question = questions.find((one) => one.id === id);
-	if (!question) throw new Error(`no question "${id}"`);
-	return { question, answer: { label, keep } };
+/** The whole bill, so a flat fee is never left out of it. */
+const monthlyBill = (price: Price) => {
+	const seat = `${money(price.perSeat)} per ${price.perSeat.per}`;
+	if (price.fixed === undefined) return `${seat}, every month`;
+	const covered = `${price.seatsIncluded} ${price.perSeat.per}s`;
+	return `${money(price.fixed)} a month for ${covered}, then ${seat}`;
 };
 
 /**
  * What the method is like, written without knowing what the user answered, so
- * the result reads as a description rather than a summary of the quiz. The cons
- * with no dealbreaker are the ones no question covers: they earn a guide
- * instead, see `extraGuides`.
+ * the result reads as a description rather than a summary of the quiz. A con
+ * without a predicate is one no other option fixes: see `extraGuides`.
  */
 export const traits = (method: Method): Trait<Method>[] => {
 	const list: Trait<Method>[] = [];
 
 	if (method.price === null) list.push(pro("Free"));
-	else
-		list.push(
-			con(
-				`${method.price.amount} ${method.price.currency} per ${method.price.per}, every month`,
-				rulesOut("budget", "No, free only"),
-			),
-		);
+	else list.push(con(monthlyBill(method.price), (one) => one.price === null));
 
 	if (method.maxUsers !== null)
 		list.push(
-			con(
-				`Up to ${method.maxUsers} people`,
-				rulesOut("how-many-users", "More than 5"),
+			blocking(
+				con(`Up to ${method.maxUsers} people`, (one) => one.maxUsers === null),
 			),
 		);
 
 	if (method.maxDevices !== null)
 		list.push(
-			con(
-				`Up to ${method.maxDevices} devices`,
-				rulesOut("how-many-devices", "More than 100"),
+			blocking(
+				con(`Up to ${method.maxDevices} devices`, (one) => one.maxDevices === null),
 			),
 		);
 
 	list.push(
-		either(
-			method.isHighBandwidthFriendly,
-			"Streams video without complaint",
-			"Streaming video goes against its terms",
-			rulesOut("high-bandwidth", "Yes"),
+		blocking(
+			either(
+				method,
+				(one) => one.isHighBandwidthFriendly,
+				"Streams video without complaint",
+				"Streaming video goes against its terms",
+			),
 		),
 	);
 
@@ -655,89 +733,96 @@ export const traits = (method: Method): Trait<Method>[] => {
 		list.push(pro("Nothing to open on your router"));
 	if (method.homeNetworkRequirement === "forwarded-port")
 		list.push(
-			con(
-				"A port to open on your router",
-				rulesOut("port-forwarding", "No, or I'd rather not"),
-			),
+			blocking(con("A port to open on your router", worksWithoutForwardedPort)),
 		);
 	if (method.homeNetworkRequirement === "public-ipv6")
 		list.push(
-			con("Every user needs public IPv6", rulesOut("public-ipv6", "No")),
+			blocking(con("Every user needs public IPv6", worksWithoutPublicIpv6)),
 		);
 
 	list.push(
-		either(
-			method.servesPublicServices,
-			"A link is enough, nothing to install",
-			"Every user installs a client",
-			rulesOut("client-application", "With a web address, nothing to install"),
-		),
-		either(
-			method.servesPrivateServices,
-			"Can stay off the open internet",
-			"Whatever you publish faces the internet",
-			rulesOut(
-				"client-application",
-				"With an app, and nothing exposed to the internet",
+		blocking(
+			either(
+				method,
+				(one) => one.servesPublicServices,
+				"A link is enough, nothing to install",
+				"Every user installs a client",
 			),
 		),
 		either(
-			handlesTlsItself(method),
+			method,
+			(one) => one.servesPrivateServices,
+			"Can stay off the open internet",
+			"Whatever you publish faces the internet",
+		),
+		either(
+			method,
+			handlesTlsItself,
 			"HTTPS handled for you",
 			"A reverse proxy to add for HTTPS",
-			rulesOut("tls", "The remote access tool"),
 		),
 		either(
-			!method.isDependentOnThirdParty,
+			method,
+			(one) => !one.isDependentOnThirdParty,
 			"Nobody else in the loop",
 			"Leans on a service you do not run",
-			rulesOut("third-party", "Yes"),
 		),
 		either(
-			!method.hasProprietaryComponent,
+			method,
+			(one) => !one.hasProprietaryComponent,
 			"Open source all the way",
 			"A closed source piece",
-			rulesOut("open-source", "Yes"),
 		),
 		either(
-			method.hasBuiltInNameResolution,
+			method,
+			(one) => one.hasBuiltInNameResolution,
 			"Machines answer to a name",
 			"Names take a DNS zone of your own",
 		),
 	);
 
+	// Only worth saying when there is a client to get onto the box at all
+	if (!method.servesPublicServices)
+		list.push(
+			tvTrait("An Apple TV", method, (one) => one.appleTv),
+			tvTrait("An Android TV", method, (one) => one.androidTv),
+			tvTrait("A Fire TV", method, (one) => one.fireTv),
+		);
+
 	if (method.needsYourOwnRemoteMachine)
 		list.push(
-			con(
-				"A server to rent and keep running",
-				rulesOutWhen(
-					"entry-point",
-					"Not a server I rent",
-					(one) => entryPoint(one) !== "rented",
+			blocking(
+				con(
+					"A server to rent and keep running",
+					(one) => !one.needsYourOwnRemoteMachine,
 				),
 			),
 		);
 
 	if (method.reachesEveryLocalService)
-		list.push(con("Opens the whole home network by default"));
+		list.push(
+			con(
+				"Opens the whole home network by default",
+				(one) => !one.reachesEveryLocalService,
+			),
+		);
 
 	// Nothing installed of its own means nothing to administer either
 	if (method.setupSteps.length > 0)
 		list.push(
 			either(
-				method.hasWebInterface,
+				method,
+				(one) => one.hasWebInterface,
 				"Managed from a web interface",
 				"Managed from a terminal",
-				rulesOut("web-interface", "In a web interface"),
 			),
 		);
 
-	if (method.setupSteps.length === 0)
-		list.push(pro("Nothing of its own to install"));
+	if (method.setupSteps.length === 0) list.push(pro("Nothing of its own to install"));
 	else if (method.setupSteps.length === 1) list.push(pro("One thing to install"));
 	else
 		list.push(
-			con("Several pieces to set up", rulesOut("effort", "As little as possible")),
+			con("Several pieces to set up", (one) => one.setupSteps.length <= 1),
 		);
 
 	return list;
@@ -750,13 +835,10 @@ export type ExtraGuide =
 	| "private-dns";
 
 /**
- * Dynamic DNS keeps a name pointing at a home address that moves, so it is only
- * needed when the address isn't static, which is asked outside of the quiz.
- * Restricting access is never asked either: joining the network is what buys
- * the client application, and the guide is where the user gets told that it
- * hands out the whole house by default, then how to lock it down.
- * Names are not asked about at all: any method reaches them with a DNS zone, so
- * a method that has none built in earns the guide rather than a bad mark.
+ * The guides that come with the method, for what the quiz deliberately never
+ * asks: whether the home address moves, how far into the house the VPN reaches,
+ * and how services get their names. None of the three rules an option out, so
+ * each earns a page instead of a question.
  */
 export const extraGuides = (method: Method): ExtraGuide[] => [
 	...(method.needsDomain ? (["get-domain"] as const) : []),
