@@ -15,7 +15,10 @@ const extras: Record<ExtraGuide, Doc> = {
 		title: "Pick a reverse proxy for HTTPS",
 		href: "/quiz/reverse-proxy/",
 	},
-	"get-domain": { title: "Get a domain name", href: "/reference/get-domain/" },
+	"get-domain": { 
+		title: "Get a domain name", 
+		href: "/reference/get-domain/",
+	},
 	"dynamic-dns": {
 		title: "Keep a name pointing at your home",
 		href: "/reference/dynamic-dns/",

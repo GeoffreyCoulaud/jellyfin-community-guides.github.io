@@ -37,8 +37,9 @@ export type Quiz<O extends Option> = {
 	options: readonly O[];
 	questions: readonly Question<O>[];
 	/**
-	 * Nothing left to ask tells these apart, yet one is plainly worse: paying for
-	 * what the free plan already covers. Dropped, not offered as just as good.
+	 * Plainly worse than another option, with nothing left to weigh against it.
+	 * Asked only once no remaining question could turn out in the candidate's
+	 * favour, so it carries the judgement and never its timing.
 	 */
 	worseThan?: (candidate: O, other: O) => boolean;
 };
@@ -138,13 +139,52 @@ const splitsPool = <O extends Option>(
 	return new Set(reachable).size >= 2;
 };
 
-export const startQuiz = <O extends Option>(quiz: Quiz<O>): QuizState<O> => ({
-	pool: quiz.options,
-	steps: [],
-});
+const wasAsked = <O extends Option>(steps: readonly Step<O>[], id: string) =>
+	steps.some((step) => step.question?.id === id);
 
-const wasAsked = <O extends Option>(state: QuizState<O>, id: string) =>
-	state.steps.some((step) => step.question?.id === id);
+/**
+ * Every answer keeping the candidate keeps this one too, so nothing left to ask
+ * can turn out in the candidate's favour. What lets an outclassed option go as
+ * soon as it is outclassed, rather than at the last question.
+ */
+const subsumes = <O extends Option>(
+	quiz: Quiz<O>,
+	steps: readonly Step<O>[],
+	other: O,
+	candidate: O,
+) =>
+	quiz.questions
+		.filter((question) => !wasAsked(steps, question.id))
+		.every((question) =>
+			question.answers.every(
+				(answer) => !answer.keep(candidate) || answer.keep(other),
+			),
+		);
+
+/**
+ * What the steps keep, minus what another option outclasses. One pool, so the
+ * count, the list and the result cannot disagree on what is still standing.
+ */
+const prune = <O extends Option>(quiz: Quiz<O>, steps: readonly Step<O>[]) => {
+	const kept = quiz.options.filter((option) =>
+		steps.every((step) => step.keep(option)),
+	);
+	return kept.filter(
+		(one) =>
+			!kept.some(
+				(other) =>
+					quiz.worseThan?.(one, other) && subsumes(quiz, steps, other, one),
+			),
+	);
+};
+
+/** Steps only ever narrow the pool, so dropping one means replaying them all. */
+const replay = <O extends Option>(
+	quiz: Quiz<O>,
+	steps: readonly Step<O>[],
+): QuizState<O> => ({ pool: prune(quiz, steps), steps });
+
+export const startQuiz = <O extends Option>(quiz: Quiz<O>) => replay(quiz, []);
 
 /**
  * The greedy pick: prunes the most in the worst case, declaration order breaks
@@ -158,7 +198,7 @@ export const nextQuestion = <O extends Option>(
 ) => {
 	if (state.pool.length <= 1) return undefined;
 	return quiz.questions
-		.filter((q) => !wasAsked(state, q.id) && splitsPool(q, state.pool))
+		.filter((q) => !wasAsked(state.steps, q.id) && splitsPool(q, state.pool))
 		.sort(
 			(a, b) =>
 				Number(b.asksFirst ?? false) - Number(a.asksFirst ?? false) ||
@@ -177,42 +217,31 @@ export const liveAnswers = <O extends Option>(
 ) => question.answers.filter((answer) => pool.some(answer.keep));
 
 export const applyAnswer = <O extends Option>(
+	quiz: Quiz<O>,
 	state: QuizState<O>,
 	question: Question<O>,
 	answer: Answer<O>,
-): QuizState<O> => ({
-	pool: state.pool.filter(answer.keep),
-	steps: [...state.steps, { label: answer.label, keep: answer.keep, question }],
-});
+): QuizState<O> =>
+	replay(quiz, [
+		...state.steps,
+		{ label: answer.label, keep: answer.keep, question },
+	]);
 
 /**
  * "over-constrained": every option is ruled out, so the honest answer is to set
  * none of this up, or to walk one answer back.
  * "resolved": `alternatives` holds what no remaining question tells apart from
- * the recommendation, declaration order picking which of them leads. The worse
- * deals drop out of both: nothing separates them any more, nothing excuses them.
+ * the recommendation, declaration order picking which of them leads.
  */
 export const resolve = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
 ) => {
-	if (state.pool.length === 0) return { status: "over-constrained" } as const;
 	if (nextQuestion(quiz, state)) return { status: "asking" } as const;
-	const [first, ...alternatives] = state.pool.filter(
-		(one) => !state.pool.some((other) => quiz.worseThan?.(one, other)),
-	);
+	const [first, ...alternatives] = state.pool;
 	if (first === undefined) return { status: "over-constrained" } as const;
 	return { status: "resolved", option: first, alternatives } as const;
 };
-
-/** Steps only ever narrow the pool, so dropping one means replaying them all. */
-const replay = <O extends Option>(
-	quiz: Quiz<O>,
-	steps: readonly Step<O>[],
-): QuizState<O> => ({
-	pool: quiz.options.filter((option) => steps.every((step) => step.keep(option))),
-	steps,
-});
 
 /**
  * Turn a con into a dealbreaker: every option carrying it leaves for good, the

@@ -275,7 +275,7 @@ export const QuizRunner = <O extends Option>({
 	const [state, setState] = useState<QuizState<O>>(() => startQuiz(quiz));
 
 	const answer = (question: Question<O>, picked: Answer<O>) =>
-		setState(applyAnswer(state, question, picked));
+		setState(applyAnswer(quiz, state, question, picked));
 
 	const recap = (
 		<ol>

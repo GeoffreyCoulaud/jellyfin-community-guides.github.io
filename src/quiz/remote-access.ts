@@ -819,9 +819,42 @@ const questions = [
 	},
 ] as const satisfies readonly Question<RemoteAccessMethod>[];
 
-/** Same on everything the quiz asks, so the bill is the only difference left. */
+/** Every field but `setupSteps` is a scalar, so one pass over the list does. */
+const sameValue = (one: unknown, other: unknown) =>
+	Array.isArray(one) && Array.isArray(other)
+		? one.length === other.length &&
+			one.every((item, index) => item === other[index])
+		: one === other;
+
+/** The service itself: what a provider does not change between its plans. */
+const service = ({
+	slug,
+	price,
+	maxUsers,
+	maxDevices,
+	...rest
+}: RemoteAccessMethod) => rest;
+
+/**
+ * Two plans of one service, the bill being the whole of the difference. Nothing
+ * else may differ: a rented server and a hosted account both cost money, and
+ * which of the two you want is a real choice.
+ */
+const differsOnlyByTheBill = (
+	candidate: RemoteAccessMethod,
+	other: RemoteAccessMethod,
+) => {
+	const theirs: Record<string, unknown> = service(other);
+	return Object.entries(service(candidate)).every(([field, value]) =>
+		sameValue(value, theirs[field]),
+	);
+};
+
+/** Paying for what the free plan of the same service already covers. */
 const worseThan = (candidate: RemoteAccessMethod, other: RemoteAccessMethod) =>
-	costsMoney(candidate) && !costsMoney(other);
+	differsOnlyByTheBill(candidate, other) &&
+	hasSubscription(candidate) &&
+	!hasSubscription(other);
 
 export const remoteAccessQuiz: Quiz<RemoteAccessMethod> = {
 	options: methods,
