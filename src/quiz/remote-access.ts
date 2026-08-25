@@ -483,6 +483,17 @@ const monthlyBill = (price: Price | null) => {
 	return `${money(price.fixed)} a month for ${covered}, then ${seat}`;
 };
 
+/** What the vendor bills every month, and the only bill `price` knows about. */
+const hasSubscription = (method: RemoteAccessMethod) => method.price !== null;
+
+/** The machine you rent: nobody invoices it here, it is not free either. */
+const hasHostingCost = (method: RemoteAccessMethod) =>
+	method.needsYourOwnRemoteMachine;
+
+/** Both bills together, which is what paying nothing at all rules out. */
+const costsMoney = (method: RemoteAccessMethod) =>
+	hasSubscription(method) || hasHostingCost(method);
+
 /**
  * Two axes per box people watch on: whether it can run the client at all, then
  * which store it comes from. Both keep quiet about a method that publishes a
@@ -511,8 +522,8 @@ const tvAxes = (
  */
 const axes: readonly Axis<RemoteAccessMethod>[] = [
 	{
-		holds: (one) => one.price === null,
-		pro: "Free",
+		holds: (one) => !hasSubscription(one),
+		pro: (one) => (hasHostingCost(one) ? "No subscription" : "Free"),
 		con: (one) => monthlyBill(one.price),
 	},
 	{
@@ -691,10 +702,18 @@ const questions = [
 	{
 		id: "budget",
 		kind: "preference",
-		question: "Is a monthly subscription an option?",
+		question: "Are you willing to pay for remote access?",
 		answers: [
-			{ label: "Yes, if it buys something", keep: keepAll },
-			{ label: "No, free only", keep: (m) => m.price === null },
+			{ label: "Yes", keep: keepAll },
+			{
+				label: "Yes, but only for a service subscription",
+				keep: (m) => !hasHostingCost(m),
+			},
+			{
+				label: "Yes, but only for a rented server",
+				keep: (m) => !hasSubscription(m),
+			},
+			{ label: "No", keep: (m) => !costsMoney(m) },
 		],
 	},
 	{
@@ -802,7 +821,7 @@ const questions = [
 
 /** Same on everything the quiz asks, so the bill is the only difference left. */
 const worseThan = (candidate: RemoteAccessMethod, other: RemoteAccessMethod) =>
-	candidate.price !== null && other.price === null;
+	costsMoney(candidate) && !costsMoney(other);
 
 export const remoteAccessQuiz: Quiz<RemoteAccessMethod> = {
 	options: methods,
