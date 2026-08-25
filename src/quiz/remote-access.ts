@@ -40,7 +40,7 @@ type SetupStep =
  * One plan of one method: a provider selling several is several options, so
  * that limits and price are plain numbers instead of tiers to unfold.
  */
-export type Method = {
+export type RemoteAccessMethod = {
 	slug: string;
 	/** Reachable from the internet: a link, a browser, nothing to install. */
 	servesPublicServices: boolean;
@@ -428,15 +428,15 @@ const methods = [
 	{ ...pangolinCe, slug: "pangolin-ce-at-home", ...atHome },
 	{ ...pangolinEe, slug: "pangolin-ee-on-vps", ...onAVps },
 	{ ...pangolinEe, slug: "pangolin-ee-at-home", ...atHome },
-] as const satisfies readonly Method[];
+] as const satisfies readonly RemoteAccessMethod[];
 
 export type MethodSlug = (typeof methods)[number]["slug"];
 
 /** CGNAT and a router you cannot touch both leave you without a port to forward. */
-const worksWithoutForwardedPort = (method: Method) =>
+const worksWithoutForwardedPort = (method: RemoteAccessMethod) =>
 	method.homeNetworkRequirement !== "forwarded-port";
 
-const worksWithoutPublicIpv6 = (method: Method) =>
+const worksWithoutPublicIpv6 = (method: RemoteAccessMethod) =>
 	method.homeNetworkRequirement !== "public-ipv6";
 
 /**
@@ -445,19 +445,19 @@ const worksWithoutPublicIpv6 = (method: Method) =>
  * tool is not marked down for the half its user may never set up. Which half it
  * covers is on the card, one axis each.
  */
-const handlesTlsItself = (method: Method) =>
+const handlesTlsItself = (method: RemoteAccessMethod) =>
 	method.handlesTlsForPublicServices || method.handlesTlsForPrivateServices;
 
 /** A half it serves and puts no HTTPS on: something else has to. */
-const needsAReverseProxy = (method: Method) =>
+const needsAReverseProxy = (method: RemoteAccessMethod) =>
 	(method.servesPublicServices && !method.handlesTlsForPublicServices) ||
 	(method.servesPrivateServices && !method.handlesTlsForPrivateServices);
 
 /** Nothing to install, so any box with a Jellyfin app or a browser gets there. */
-const worksOnAnyTv = (method: Method) => method.servesPublicServices;
+const worksOnAnyTv = (method: RemoteAccessMethod) => method.servesPublicServices;
 
 /** Clients aim at your home address, which your ISP can change under you. */
-const isReachedAtHome = (method: Method) =>
+const isReachedAtHome = (method: RemoteAccessMethod) =>
 	method.homeNetworkRequirement !== "nothing";
 
 /**
@@ -465,7 +465,7 @@ const isReachedAtHome = (method: Method) =>
  * at home: a tunnel or an overlay network lands it on machines the vendor runs,
  * which is what needing nothing from your home network really means.
  */
-const entryPoint = (method: Method) =>
+const entryPoint = (method: RemoteAccessMethod) =>
 	isReachedAtHome(method)
 		? "home"
 		: method.needsYourOwnRemoteMachine
@@ -490,8 +490,8 @@ const monthlyBill = (price: Price | null) => {
  */
 const tvAxes = (
 	device: string,
-	client: (one: Method) => TvClient,
-): Axis<Method>[] => [
+	client: (one: RemoteAccessMethod) => TvClient,
+): Axis<RemoteAccessMethod>[] => [
 	{
 		applies: (one) => !worksOnAnyTv(one),
 		holds: (one) => worksOnAnyTv(one) || client(one) !== "none",
@@ -509,7 +509,7 @@ const tvAxes = (
  * What the method is like, written without knowing what the user answered, so
  * the result reads as a description rather than a summary of the quiz.
  */
-const axes: readonly Axis<Method>[] = [
+const axes: readonly Axis<RemoteAccessMethod>[] = [
 	{
 		holds: (one) => one.price === null,
 		pro: "Free",
@@ -607,12 +607,12 @@ const axes: readonly Axis<Method>[] = [
 	},
 ];
 
-export const traits = (method: Method) => describe(method, axes);
+export const traits = (method: RemoteAccessMethod) => describe(method, axes);
 
-const servesUsers = (users: number) => (method: Method) =>
+const servesUsers = (users: number) => (method: RemoteAccessMethod) =>
 	method.maxUsers === null || method.maxUsers >= users;
 
-const servesDevices = (devices: number) => (method: Method) =>
+const servesDevices = (devices: number) => (method: RemoteAccessMethod) =>
 	method.maxDevices === null || method.maxDevices >= devices;
 
 /**
@@ -797,13 +797,13 @@ const questions = [
 			{ label: "I don't mind", keep: keepAll },
 		],
 	},
-] as const satisfies readonly Question<Method>[];
+] as const satisfies readonly Question<RemoteAccessMethod>[];
 
 /** Same on everything the quiz asks, so the bill is the only difference left. */
-const worseThan = (candidate: Method, other: Method) =>
+const worseThan = (candidate: RemoteAccessMethod, other: RemoteAccessMethod) =>
 	candidate.price !== null && other.price === null;
 
-export const remoteAccessQuiz: Quiz<Method> = {
+export const remoteAccessQuiz: Quiz<RemoteAccessMethod> = {
 	options: methods,
 	questions,
 	worseThan,
@@ -822,7 +822,7 @@ export type ExtraGuide =
  * the home address moves, how far into the house the VPN reaches and how
  * services get their names ruling no option out. Each earns a page instead.
  */
-export const extraGuides = (method: Method): ExtraGuide[] => [
+export const extraGuides = (method: RemoteAccessMethod): ExtraGuide[] => [
 	...(needsAReverseProxy(method) ? (["reverse-proxy"] as const) : []),
 	...(method.needsDomain ? (["get-domain"] as const) : []),
 	...(isReachedAtHome(method) ? (["dynamic-dns"] as const) : []),

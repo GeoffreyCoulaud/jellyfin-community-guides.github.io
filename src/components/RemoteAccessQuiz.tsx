@@ -1,10 +1,10 @@
 import {
-	extraGuides,
-	remoteAccessQuiz,
-	traits,
-	type ExtraGuide,
-	type Method,
-	type MethodSlug,
+  extraGuides,
+  remoteAccessQuiz,
+  traits,
+  type ExtraGuide,
+  type RemoteAccessMethod,
+  type MethodSlug,
 } from "../quiz/remote-access";
 import { QuizRunner, type Doc } from "./QuizRunner";
 
@@ -50,13 +50,13 @@ const extras: Record<ExtraGuide, Doc> = {
 	},
 };
 
-const doc = (method: Method): Doc => ({
-	title: titles[method.slug as MethodSlug],
-	href: `/guides/remote-access/${method.slug}/`,
+const doc = (method: RemoteAccessMethod): Doc => ({
+  title: titles[method.slug as MethodSlug],
+  href: `/guides/remote-access/${method.slug}/`,
 });
 
-const guides = (method: Method): Doc[] =>
-	extraGuides(method).map((guide) => extras[guide]);
+const guides = (method: RemoteAccessMethod): Doc[] =>
+  extraGuides(method).map((guide) => extras[guide]);
 
 export const RemoteAccessQuiz = () => (
 	<QuizRunner
