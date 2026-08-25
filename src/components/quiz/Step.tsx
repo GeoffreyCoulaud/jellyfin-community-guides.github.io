@@ -1,7 +1,7 @@
 import type { Option, Question, Step } from "../../quiz/engine";
 
 export const key = <O extends Option>(step: Step<O>) =>
-	`${step.question?.id ?? "dealbreaker"}: ${step.label}`;
+	`${step.question?.id ?? step.option?.slug}: ${step.id}`;
 
 /** Softest first: a preference gives before a refusal, a refusal before a fact. */
 export const givesFirst = <O extends Option>(step: Step<O>) =>

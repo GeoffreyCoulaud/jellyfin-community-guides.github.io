@@ -217,21 +217,25 @@ const hasDnsChallenge = (one: ReverseProxy) =>
  */
 const axes: readonly Axis<ReverseProxy>[] = [
 	{
+		id: "high-bandwidth",
 		holds: (one) => one.isHighBandwidthFriendly,
 		pro: "Streams video without complaint",
 		con: "Streaming video goes against its terms",
 	},
 	{
+		id: "third-party",
 		holds: (one) => !one.isDependentOnThirdParty,
 		pro: "Traffic goes straight from your server",
 		con: "Your traffic goes through a company's servers",
 	},
 	{
+		id: "own-domain",
 		holds: (one) => !one.needsDomain,
 		pro: "No domain to buy",
 		con: "A domain name of your own",
 	},
 	{
+		id: "dns-challenge",
 		// HTTP-01 needs the name to answer on the open internet, which a service
 		// behind a VPN never does
 		applies: (one) => one.needsDomain,
@@ -246,6 +250,7 @@ const axes: readonly Axis<ReverseProxy>[] = [
 				: "A DNS challenge only through certbot, a second tool to set up",
 	},
 	{
+		id: "single-sign-on",
 		// Funnel publishes, full stop: there is no gate to put in front of it
 		applies: (one) => one.authentication !== "none",
 		holds: (one) => one.authentication === "sso",
@@ -253,16 +258,19 @@ const axes: readonly Axis<ReverseProxy>[] = [
 		con: "A password per service, and no single login for all of them",
 	},
 	{
+		id: "authentication",
 		// Not open to everyone, the service still has its own accounts: the con is
 		// that they are the only gate, and few services treat that as their job
 		holds: (one) => one.authentication !== "none",
 		con: "Nothing in front: each service is left to guard itself",
 	},
 	{
+		id: "web-interface",
 		holds: (one) => one.hasWebInterface,
 		pro: "Services are added in a web interface",
 	},
 	{
+		id: "versionable",
 		// A web interface is not the better way of the two, only the other one:
 		// what a file and a label have over it is being text of yours
 		applies: (one) => one.hasWebInterface,
@@ -270,22 +278,27 @@ const axes: readonly Axis<ReverseProxy>[] = [
 		con: "Its routes live in a store of its own, nothing to keep in git",
 	},
 	{
+		id: "config-file",
 		holds: (one) => one.hasConfigFile,
 		pro: "Services are added in a config file, which you can version",
 	},
 	{
+		id: "container-labels",
 		holds: (one) => one.readsContainerLabels,
 		pro: "A container carries its own route, next to the service itself",
 	},
 	{
+		id: "needs-docker",
 		holds: (one) => one.deployment === "native",
 		con: "Docker has to be there to run it",
 	},
 	{
+		id: "one-command",
 		holds: (one) => one.isSetUpWithACommand,
 		pro: "One command per service, nothing to edit",
 	},
 	{
+		id: "own-address",
 		holds: (one) => !one.servesOneAddress,
 		con: "Services share one address, on a path",
 	},
@@ -307,12 +320,28 @@ const questions = [
 		// habits are what carry over. Every family needs an answer of its own.
 		question: "Do you already know one of these?",
 		answers: [
-			{ label: "None, or I'd rather start fresh", keep: keepAll },
-			{ label: "Caddy", keep: (p) => p.family === "caddy" },
-			{ label: "Traefik", keep: (p) => p.family === "traefik" },
-			{ label: "Nginx", keep: (p) => p.family === "nginx" },
-			{ label: "Zoraxy", keep: (p) => p.family === "zoraxy" },
-			{ label: "Tailscale", keep: (p) => p.family === "tailscale" },
+			{
+				id: "none",
+				label: "None, or I'd rather start fresh",
+				keep: keepAll,
+			},
+			{ id: "caddy", label: "Caddy", keep: (p) => p.family === "caddy" },
+			{
+				id: "traefik",
+				label: "Traefik",
+				keep: (p) => p.family === "traefik",
+			},
+			{ id: "nginx", label: "Nginx", keep: (p) => p.family === "nginx" },
+			{
+				id: "zoraxy",
+				label: "Zoraxy",
+				keep: (p) => p.family === "zoraxy",
+			},
+			{
+				id: "tailscale",
+				label: "Tailscale",
+				keep: (p) => p.family === "tailscale",
+			},
 		],
 	},
 	{
@@ -322,12 +351,17 @@ const questions = [
 		// half of these only ever ship as a container
 		question: "How will you run it?",
 		answers: [
-			{ label: "In Docker", keep: (p) => p.deployment === "docker" },
 			{
+				id: "docker",
+				label: "In Docker",
+				keep: (p) => p.deployment === "docker",
+			},
+			{
+				id: "native",
 				label: "Straight on the machine",
 				keep: (p) => p.deployment === "native",
 			},
-			{ label: dontMind, keep: keepAll },
+			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -338,9 +372,13 @@ const questions = [
 		question: "Will one of your services stream video?",
 		help: "Jellyfin, for instance: video is what some proxies meter or forbid outright.",
 		answers: [
-			{ label: "Yes", keep: (p) => p.isHighBandwidthFriendly },
-			{ label: "No", keep: keepAll },
-			{ label: dontKnow, keep: (p) => p.isHighBandwidthFriendly },
+			{ id: "yes", label: "Yes", keep: (p) => p.isHighBandwidthFriendly },
+			{ id: "no", label: "No", keep: keepAll },
+			{
+				id: "unknown",
+				label: dontKnow,
+				keep: (p) => p.isHighBandwidthFriendly,
+			},
 		],
 	},
 	{
@@ -349,14 +387,16 @@ const questions = [
 		question: "Where should your traffic go?",
 		answers: [
 			{
+				id: "third-party",
 				label: "Through a company's servers, one less thing to run",
 				keep: (p) => p.isDependentOnThirdParty,
 			},
 			{
+				id: "direct",
 				label: "Straight from my server to my users",
 				keep: (p) => !p.isDependentOnThirdParty,
 			},
-			{ label: dontMind, keep: keepAll },
+			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -364,12 +404,17 @@ const questions = [
 		kind: "preference",
 		question: "What address should your services answer on?",
 		answers: [
-			{ label: "A domain name of my own", keep: (p) => p.needsDomain },
 			{
+				id: "own-domain",
+				label: "A domain name of my own",
+				keep: (p) => p.needsDomain,
+			},
+			{
+				id: "given-address",
 				label: "Whatever address I am given",
 				keep: (p) => !p.needsDomain,
 			},
-			{ label: dontMind, keep: keepAll },
+			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -377,14 +422,27 @@ const questions = [
 		kind: "preference",
 		question: "How do you want to add a service?",
 		answers: [
-			{ label: "In a web interface", keep: (p) => p.hasWebInterface },
-			{ label: "In a config file", keep: (p) => p.hasConfigFile },
 			{
+				id: "web-interface",
+				label: "In a web interface",
+				keep: (p) => p.hasWebInterface,
+			},
+			{
+				id: "config-file",
+				label: "In a config file",
+				keep: (p) => p.hasConfigFile,
+			},
+			{
+				id: "container-label",
 				label: "On the container, as a label",
 				keep: (p) => p.readsContainerLabels,
 			},
-			{ label: "With one command", keep: (p) => p.isSetUpWithACommand },
-			{ label: dontMind, keep: keepAll },
+			{
+				id: "one-command",
+				label: "With one command",
+				keep: (p) => p.isSetUpWithACommand,
+			},
+			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],
 	},
 ] as const satisfies readonly Question<ReverseProxy>[];

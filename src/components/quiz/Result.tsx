@@ -3,12 +3,14 @@ import { Emblem } from "../Emblem";
 import { DocBlock, sameLink, type Doc } from "./Doc";
 
 type ConProps<O extends Option> = {
+	/** Whose card it is: a con is worded off the option it was read on. */
+	option: O;
 	trait: Trait<O>;
 	onRefuse: (refused: Step<O>) => void;
 };
 
 /** A con, and the way out of it: refusing it is asking for the options without it. */
-const ConRow = <O extends Option>({ trait, onRefuse }: ConProps<O>) => {
+const ConRow = <O extends Option>({ option, trait, onRefuse }: ConProps<O>) => {
 	const refuse = trait.keep;
 
 	return (
@@ -18,7 +20,12 @@ const ConRow = <O extends Option>({ trait, onRefuse }: ConProps<O>) => {
 				<button
 					type="button"
 					onClick={() =>
-						onRefuse({ label: trait.label, keep: refuse })
+						onRefuse({
+							id: trait.id,
+							label: trait.label,
+							keep: refuse,
+							option,
+						})
 					}
 				>
 					Dealbreaker
@@ -29,11 +36,13 @@ const ConRow = <O extends Option>({ trait, onRefuse }: ConProps<O>) => {
 };
 
 type TraitsProps<O extends Option> = {
+	option: O;
 	traits: readonly Trait<O>[];
 	onDealbreaker: (refused: Step<O>) => void;
 };
 
 const Traits = <O extends Option>({
+	option,
 	traits,
 	onDealbreaker,
 }: TraitsProps<O>) => (
@@ -44,7 +53,7 @@ const Traits = <O extends Option>({
 				{traits
 					.filter((trait) => trait.tone === "pro")
 					.map((trait) => (
-						<li className="quiz-pro" key={trait.label}>
+						<li className="quiz-pro" key={trait.id}>
 							{trait.label}
 						</li>
 					))}
@@ -60,7 +69,8 @@ const Traits = <O extends Option>({
 					.filter((trait) => trait.tone === "con")
 					.map((trait) => (
 						<ConRow
-							key={trait.label}
+							key={trait.id}
+							option={option}
 							trait={trait}
 							onRefuse={onDealbreaker}
 						/>
@@ -108,7 +118,11 @@ export const Result = <O extends Option>({
 			</h2>
 
 			{listed.length > 0 && (
-				<Traits traits={listed} onDealbreaker={onDealbreaker} />
+				<Traits
+					option={option}
+					traits={listed}
+					onDealbreaker={onDealbreaker}
+				/>
 			)}
 
 			{extra.length > 0 && (

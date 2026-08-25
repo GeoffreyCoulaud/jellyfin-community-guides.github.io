@@ -8,6 +8,12 @@
 export type Option = { slug: string };
 
 export type Answer<O extends Option> = {
+	/**
+	 * What a shared link cites, so the wording is free to change under it. What
+	 * the answer keeps is not: an answer that changes its mind needs a new id,
+	 * or an old link comes back meaning something nobody said.
+	 */
+	id: string;
 	label: string;
 	/** Options kept when this answer is picked. */
 	keep: (option: O) => boolean;
@@ -49,11 +55,15 @@ export type Quiz<O extends Option> = {
  * narrow the pool, which is all the engine needs from them.
  */
 export type Step<O extends Option> = {
+	/** The answer picked, or the axis the refused con was read off. */
+	id: string;
 	/** The answer picked, or the con refused. */
 	label: string;
 	keep: (option: O) => boolean;
 	/** The question answered. Absent when a con was refused instead. */
 	question?: Question<O>;
+	/** Whose card the con was read off. Absent when a question was answered. */
+	option?: O;
 };
 
 /**
@@ -62,6 +72,8 @@ export type Step<O extends Option> = {
  * it a dealbreaker needs no question worded as its refusal.
  */
 export type Trait<O extends Option> = {
+	/** The axis it was read off, which is what a refusal is cited by. */
+	id: string;
 	label: string;
 	tone: "pro" | "con";
 	/** Options left standing once this con is a dealbreaker. */
@@ -87,6 +99,8 @@ type Side<O extends Option> = string | ((option: O) => string);
  * way round is written.
  */
 export type Axis<O extends Option> = {
+	/** What a refused con is cited by, the label being free to move under it. */
+	id: string;
 	/** Worth a word at all: an axis with nothing to say is left out of the list. */
 	applies?: (option: O) => boolean;
 	holds: (option: O) => boolean;
@@ -109,8 +123,8 @@ export const describe = <O extends Option>(
 		if (side === undefined) return [];
 		const label = say(side, option);
 		return holds
-			? [{ label, tone: "pro" }]
-			: [{ label, tone: "con", keep: axis.holds }];
+			? [{ id: axis.id, label, tone: "pro" }]
+			: [{ id: axis.id, label, tone: "con", keep: axis.holds }];
 	});
 
 const outcomes = <O extends Option>(
@@ -227,7 +241,7 @@ export const applyAnswer = <O extends Option>(
 ): QuizState<O> =>
 	replay(quiz, [
 		...state.steps,
-		{ label: answer.label, keep: answer.keep, question },
+		{ id: answer.id, label: answer.label, keep: answer.keep, question },
 	]);
 
 /**
@@ -293,3 +307,9 @@ export const blockers = <O extends Option>(
 				.every((step) => step.keep(option)),
 		),
 	);
+
+/** An earlier state, read off its steps rather than the clicks that made them. */
+export const restore = <O extends Option>(
+	quiz: Quiz<O>,
+	steps: readonly Step<O>[],
+): QuizState<O> => replay(quiz, steps);

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
 	applyAnswer,
 	blockers,
@@ -7,10 +6,8 @@ import {
 	reconsider,
 	resolve,
 	rewind,
-	startQuiz,
 	type Option,
 	type Quiz,
-	type QuizState,
 	type Trait,
 } from "../../quiz/engine";
 import { Asking } from "./Asking";
@@ -19,6 +16,7 @@ import { Recap } from "./Recap";
 import { Result } from "./Result";
 import { givesFirst } from "./Step";
 import { Stuck } from "./Stuck";
+import { useSharedState } from "./useSharedState";
 import type { Doc } from "./Doc";
 // The whole quiz is drawn from here, so this is the one file to bring its styles
 import "./quiz.css";
@@ -39,7 +37,7 @@ export const QuizRunner = <O extends Option>({
 	guides,
 	traits,
 }: Props<O>) => {
-	const [state, setState] = useState<QuizState<O>>(() => startQuiz(quiz));
+	const [state, setState] = useSharedState(quiz, traits);
 	const question = nextQuestion(quiz, state);
 	const outcome = resolve(quiz, state);
 	const stuck =

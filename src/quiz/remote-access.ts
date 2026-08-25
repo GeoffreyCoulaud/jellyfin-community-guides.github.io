@@ -505,15 +505,18 @@ const costsMoney = (method: RemoteAccessMethod) =>
  * public address, there being no client to install in the first place.
  */
 const tvAxes = (
+	slug: string,
 	device: string,
 	client: (one: RemoteAccessMethod) => TvClient,
 ): Axis<RemoteAccessMethod>[] => [
 	{
+		id: `${slug}-client`,
 		applies: (one) => !worksOnAnyTv(one),
 		holds: (one) => worksOnAnyTv(one) || client(one) !== "none",
 		con: `${device} cannot install it`,
 	},
 	{
+		id: `${slug}-store`,
 		applies: (one) => !worksOnAnyTv(one) && client(one) !== "none",
 		holds: (one) => worksOnAnyTv(one) || client(one) === "official",
 		pro: `${device} installs it from the store`,
@@ -527,24 +530,29 @@ const tvAxes = (
  */
 const axes: readonly Axis<RemoteAccessMethod>[] = [
 	{
+		id: "subscription",
 		holds: (one) => !hasSubscription(one),
 		pro: (one) => (hasHostingCost(one) ? "No subscription" : "Free"),
 		con: (one) => monthlyBill(one.price),
 	},
 	{
+		id: "user-limit",
 		holds: (one) => one.maxUsers === null,
 		con: (one) => `Up to ${one.maxUsers} people`,
 	},
 	{
+		id: "device-limit",
 		holds: (one) => one.maxDevices === null,
 		con: (one) => `Up to ${one.maxDevices} devices`,
 	},
 	{
+		id: "high-bandwidth",
 		holds: (one) => one.isHighBandwidthFriendly,
 		pro: "Streams video without complaint",
 		con: "Streaming video goes against its terms",
 	},
 	{
+		id: "port-forwarding",
 		// The IPv6 one hears nothing here: the axis below is its line
 		applies: (one) => one.homeNetworkRequirement !== "public-ipv6",
 		holds: worksWithoutForwardedPort,
@@ -552,20 +560,24 @@ const axes: readonly Axis<RemoteAccessMethod>[] = [
 		con: "A port to open on your router",
 	},
 	{
+		id: "public-ipv6",
 		holds: worksWithoutPublicIpv6,
 		con: "Every user needs public IPv6",
 	},
 	{
+		id: "public-services",
 		holds: (one) => one.servesPublicServices,
 		pro: "A link is enough, nothing to install",
 		con: "Every user installs a client",
 	},
 	{
+		id: "private-services",
 		holds: (one) => one.servesPrivateServices,
 		pro: "Can stay off the open internet",
 		con: "Whatever you publish faces the internet",
 	},
 	{
+		id: "public-tls",
 		// One axis per half, since a method can cover one and not the other:
 		// Pangolin CE puts HTTPS on what it publishes and none on the rest
 		applies: (one) => one.servesPublicServices,
@@ -575,6 +587,7 @@ const axes: readonly Axis<RemoteAccessMethod>[] = [
 		con: "A reverse proxy to add for HTTPS on what you publish",
 	},
 	{
+		id: "private-tls",
 		applies: (one) => one.servesPrivateServices,
 		holds: (one) =>
 			!one.servesPrivateServices || one.handlesTlsForPrivateServices,
@@ -582,32 +595,38 @@ const axes: readonly Axis<RemoteAccessMethod>[] = [
 		con: "A reverse proxy to add for HTTPS on what stays private",
 	},
 	{
+		id: "third-party",
 		holds: (one) => !one.isDependentOnThirdParty,
 		pro: "Nobody else in the loop",
 		con: "Leans on a service you do not run",
 	},
 	{
+		id: "open-source",
 		holds: (one) => !one.hasProprietaryComponent,
 		pro: "Open source all the way",
 		con: "A closed source piece",
 	},
 	{
+		id: "name-resolution",
 		holds: (one) => one.hasBuiltInNameResolution,
 		pro: "Machines answer to a name",
 		con: "Names take a DNS zone of your own",
 	},
-	...tvAxes("An Apple TV", (one) => one.appleTv),
-	...tvAxes("An Android TV", (one) => one.androidTv),
-	...tvAxes("A Fire TV", (one) => one.fireTv),
+	...tvAxes("apple-tv", "An Apple TV", (one) => one.appleTv),
+	...tvAxes("android-tv", "An Android TV", (one) => one.androidTv),
+	...tvAxes("fire-tv", "A Fire TV", (one) => one.fireTv),
 	{
+		id: "own-remote-machine",
 		holds: (one) => !one.needsYourOwnRemoteMachine,
 		con: "A server to rent and keep running",
 	},
 	{
+		id: "whole-network",
 		holds: (one) => !one.reachesEveryLocalService,
 		con: "Opens the whole home network by default",
 	},
 	{
+		id: "web-interface",
 		// Nothing installed of its own means nothing to administer either
 		applies: (one) => one.setupSteps.length > 0,
 		holds: (one) => one.hasWebInterface,
@@ -615,6 +634,7 @@ const axes: readonly Axis<RemoteAccessMethod>[] = [
 		con: "Managed by logging in to the server",
 	},
 	{
+		id: "setup-effort",
 		holds: (one) => one.setupSteps.length <= 1,
 		pro: (one) =>
 			one.setupSteps.length === 0
@@ -651,11 +671,16 @@ const questions = [
 			{
 				// Not keepAll: the IPv6-only route is the same setup minus the users
 				// whose ISP has no IPv6, so a forwarded port makes it pointless
+				id: "yes",
 				label: "Yes",
 				keep: worksWithoutPublicIpv6,
 			},
-			{ label: "No, or I'd rather not", keep: worksWithoutForwardedPort },
-			{ label: dontKnow, keep: worksWithoutForwardedPort },
+			{
+				id: "no",
+				label: "No, or I'd rather not",
+				keep: worksWithoutForwardedPort,
+			},
+			{ id: "unknown", label: dontKnow, keep: worksWithoutForwardedPort },
 		],
 	},
 	{
@@ -664,9 +689,9 @@ const questions = [
 		asksFirst: true,
 		question: "Will every one of your users have public IPv6?",
 		answers: [
-			{ label: "Yes", keep: keepAll },
-			{ label: "No", keep: worksWithoutPublicIpv6 },
-			{ label: dontKnow, keep: worksWithoutPublicIpv6 },
+			{ id: "yes", label: "Yes", keep: keepAll },
+			{ id: "no", label: "No", keep: worksWithoutPublicIpv6 },
+			{ id: "unknown", label: dontKnow, keep: worksWithoutPublicIpv6 },
 		],
 	},
 	{
@@ -674,10 +699,14 @@ const questions = [
 		kind: "fact",
 		question: "How many people will you serve, including yourself?",
 		answers: [
-			{ label: "Up to 5", keep: servesUsers(5) },
+			{ id: "up-to-5", label: "Up to 5", keep: servesUsers(5) },
 			// An open ended count only fits a plan with no cap at all
-			{ label: "More than 5", keep: (m) => m.maxUsers === null },
-			{ label: dontKnow, keep: servesUsers(5) },
+			{
+				id: "more-than-5",
+				label: "More than 5",
+				keep: (m) => m.maxUsers === null,
+			},
+			{ id: "unknown", label: dontKnow, keep: servesUsers(5) },
 		],
 	},
 	{
@@ -686,10 +715,14 @@ const questions = [
 		question: "How many devices will connect in total?",
 		help: "Phones, TVs, laptops and tablets all count, yours included.",
 		answers: [
-			{ label: "Up to 10", keep: servesDevices(10) },
-			{ label: "11 to 100", keep: servesDevices(100) },
-			{ label: "More than 100", keep: servesDevices(101) },
-			{ label: dontKnow, keep: servesDevices(10) },
+			{ id: "up-to-10", label: "Up to 10", keep: servesDevices(10) },
+			{ id: "up-to-100", label: "11 to 100", keep: servesDevices(100) },
+			{
+				id: "more-than-100",
+				label: "More than 100",
+				keep: servesDevices(101),
+			},
+			{ id: "unknown", label: dontKnow, keep: servesDevices(10) },
 		],
 	},
 	{
@@ -700,9 +733,13 @@ const questions = [
 		question: "Will you stream video through it?",
 		help: "Jellyfin, for instance: video is what some tools meter or forbid outright.",
 		answers: [
-			{ label: "Yes", keep: (m) => m.isHighBandwidthFriendly },
-			{ label: "No", keep: keepAll },
-			{ label: dontKnow, keep: (m) => m.isHighBandwidthFriendly },
+			{ id: "yes", label: "Yes", keep: (m) => m.isHighBandwidthFriendly },
+			{ id: "no", label: "No", keep: keepAll },
+			{
+				id: "unknown",
+				label: dontKnow,
+				keep: (m) => m.isHighBandwidthFriendly,
+			},
 		],
 	},
 	{
@@ -710,16 +747,18 @@ const questions = [
 		kind: "preference",
 		question: "Are you willing to pay for remote access?",
 		answers: [
-			{ label: "Yes", keep: keepAll },
+			{ id: "yes", label: "Yes", keep: keepAll },
 			{
+				id: "subscription-only",
 				label: "Yes, but only for a service subscription",
 				keep: (m) => !hasHostingCost(m),
 			},
 			{
+				id: "rented-server-only",
 				label: "Yes, but only for a rented server",
 				keep: (m) => !hasSubscription(m),
 			},
-			{ label: "No", keep: (m) => !costsMoney(m) },
+			{ id: "no", label: "No", keep: (m) => !costsMoney(m) },
 		],
 	},
 	{
@@ -729,8 +768,16 @@ const questions = [
 			"Should remote access keep working if its provider went away?",
 		help: "Some of these need an account, a coordination server or a licence check that you do not run, and stop the day it stops. A server you rent does not count: what runs on it is yours.",
 		answers: [
-			{ label: "Yes", keep: (m) => !m.isDependentOnThirdParty },
-			{ label: "No, depending on their service is fine", keep: keepAll },
+			{
+				id: "yes",
+				label: "Yes",
+				keep: (m) => !m.isDependentOnThirdParty,
+			},
+			{
+				id: "no",
+				label: "No, depending on their service is fine",
+				keep: keepAll,
+			},
 		],
 	},
 	{
@@ -738,8 +785,16 @@ const questions = [
 		kind: "preference",
 		question: "Does every part have to be open source?",
 		answers: [
-			{ label: "Yes", keep: (m) => !m.hasProprietaryComponent },
-			{ label: "No, a closed source piece is fine", keep: keepAll },
+			{
+				id: "yes",
+				label: "Yes",
+				keep: (m) => !m.hasProprietaryComponent,
+			},
+			{
+				id: "no",
+				label: "No, a closed source piece is fine",
+				keep: keepAll,
+			},
 		],
 	},
 	{
@@ -748,14 +803,20 @@ const questions = [
 		question: "How much do you want to set up yourself?",
 		answers: [
 			{
+				id: "as-little-as-possible",
 				label: "As little as possible",
 				keep: (m) => m.setupSteps.length <= 1,
 			},
 			{
+				id: "a-couple-of-pieces",
 				label: "A couple of pieces is fine",
 				keep: (m) => m.setupSteps.length <= 2,
 			},
-			{ label: "Whatever it takes", keep: keepAll },
+			{
+				id: "whatever-it-takes",
+				label: "Whatever it takes",
+				keep: keepAll,
+			},
 		],
 	},
 	{
@@ -765,9 +826,9 @@ const questions = [
 			"Will an LG or Samsung TV, a Roku, or a console need to reach your services?",
 		help: "Their stores carry no VPN client at all. An Apple TV, an Android TV or a Fire TV can run one, televisions that run Android TV included, though not every tool has an app for all three.",
 		answers: [
-			{ label: "Yes", keep: worksOnAnyTv },
-			{ label: "No", keep: keepAll },
-			{ label: dontKnow, keep: worksOnAnyTv },
+			{ id: "yes", label: "Yes", keep: worksOnAnyTv },
+			{ id: "no", label: "No", keep: keepAll },
+			{ id: "unknown", label: dontKnow, keep: worksOnAnyTv },
 		],
 	},
 	{
@@ -777,14 +838,16 @@ const questions = [
 		help: "An app on their device puts it on your network, so nothing of yours has to answer the internet. A web address is the other way around.",
 		answers: [
 			{
+				id: "app",
 				label: "With an app, and nothing exposed to the internet",
 				keep: (m) => m.servesPrivateServices,
 			},
 			{
+				id: "web-address",
 				label: "With a web address, nothing to install",
 				keep: (m) => m.servesPublicServices,
 			},
-			{ label: dontMind, keep: keepAll },
+			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -794,18 +857,21 @@ const questions = [
 		help: "A hosted service is theirs to run: an account instead of a server.",
 		answers: [
 			{
+				id: "home",
 				label: "At home, on my own line",
 				keep: (m) => entryPoint(m) === "home",
 			},
 			{
+				id: "rented-server",
 				label: "On an internet-facing server, rented by me",
 				keep: (m) => entryPoint(m) === "rented",
 			},
 			{
+				id: "hosted-service",
 				label: "On a hosted service",
 				keep: (m) => entryPoint(m) === "hosted",
 			},
-			{ label: dontMind, keep: keepAll },
+			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -814,12 +880,17 @@ const questions = [
 		question: "What should take care of HTTPS?",
 		help: "A separate reverse proxy is a second tool to set up, which the reverse proxy quiz picks for you.",
 		answers: [
-			{ label: "The remote access tool", keep: handlesTlsItself },
 			{
+				id: "remote-access-tool",
+				label: "The remote access tool",
+				keep: handlesTlsItself,
+			},
+			{
+				id: "reverse-proxy",
 				label: "A separate reverse proxy",
 				keep: (m) => !handlesTlsItself(m),
 			},
-			{ label: dontMind, keep: keepAll },
+			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -828,12 +899,17 @@ const questions = [
 		question: "How do you want to manage remote access?",
 		help: "A web interface adds users, devices and routes from any browser, on any of your machines. Without one, you log in to the server itself to do it there, in a file or with a command depending on the tool.",
 		answers: [
-			{ label: "In a web interface", keep: (m) => m.hasWebInterface },
 			{
+				id: "web-interface",
+				label: "In a web interface",
+				keep: (m) => m.hasWebInterface,
+			},
+			{
+				id: "server-login",
 				label: "By logging in to the server",
 				keep: (m) => !m.hasWebInterface,
 			},
-			{ label: dontMind, keep: keepAll },
+			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],
 	},
 ] as const satisfies readonly Question<RemoteAccessMethod>[];
