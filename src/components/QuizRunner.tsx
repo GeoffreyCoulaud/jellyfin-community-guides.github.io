@@ -71,6 +71,66 @@ const DocLink = ({ doc }: { doc: Doc }) => (
 const sameLink = (one: Doc, other: Doc) =>
 	one.href === other.href && one.title === other.title;
 
+type ProgressProps<O extends Option> = {
+	options: readonly O[];
+	pool: readonly O[];
+	doc: (option: O) => Doc;
+};
+
+/**
+ * How far the quiz has got, as a bar over the count it captions. Measured
+ * against `total - 1`, not `total`: one option left is the end of the quiz, so
+ * the last elimination fills the bar rather than leaving it a step short.
+ */
+const Progress = <O extends Option>({
+	options,
+	pool,
+	doc,
+}: ProgressProps<O>) => {
+	const total = options.length;
+	const left = pool.length;
+	const done = total > 1 ? Math.min((total - left) / (total - 1), 1) : 1;
+	const standing = (option: O) => pool.includes(option);
+	// Stable sort, so each half keeps the order the quiz declares its options in
+	const listed = [...options].sort(
+		(one, other) => Number(standing(other)) - Number(standing(one)),
+	);
+
+	return (
+		<div className="quiz-progress">
+			<div
+				className="quiz-bar"
+				role="progressbar"
+				aria-label="Options eliminated"
+				aria-valuemin={0}
+				aria-valuemax={100}
+				aria-valuenow={Math.round(done * 100)}
+			>
+				<span className="quiz-bar-fill" style={{ width: `${done * 100}%` }} />
+			</div>
+			<details className="quiz-pool">
+				<summary>
+					{left} option{left === 1 ? "" : "s"} left, out of {total}.
+				</summary>
+				<ul>
+					{listed.map((option) => {
+						const page = doc(option);
+						return (
+							<li
+								key={option.slug}
+								className={standing(option) ? undefined : "quiz-pool-out"}
+							>
+								<Emblem emblem={page.emblem} />
+								<span>{page.title}</span>
+							</li>
+						);
+					})}
+				</ul>
+			</details>
+		</div>
+	);
+};
+
 /** Facts hold, preferences get weighed again: worth knowing before answering. */
 const kindOf = <O extends Option>(question: Question<O> | undefined) =>
 	question === undefined
@@ -237,7 +297,6 @@ export const QuizRunner = <O extends Option>({
 
 	const question = nextQuestion(quiz, state);
 	const outcome = resolve(quiz, state);
-	const left = state.pool.length;
 	const stuck =
 		outcome.status === "over-constrained"
 			? [...blockers(quiz, state)].sort((a, b) => givesFirst(a) - givesFirst(b))
@@ -245,9 +304,7 @@ export const QuizRunner = <O extends Option>({
 
 	return (
 		<div className="quiz not-content">
-			<p className="quiz-count">
-				{left} option{left === 1 ? "" : "s"} left, out of {quiz.options.length}.
-			</p>
+			<Progress options={quiz.options} pool={state.pool} doc={doc} />
 
 			{question !== undefined && (
 				<section>
