@@ -111,22 +111,56 @@ const remoteAccess: Record<MethodSlug, Listing> = {
 	},
 };
 
-/** None of these is sold by the plan, so every one keeps a page of its own. */
+/**
+ * A tool run two ways is two options on one page: the guide covers both, and
+ * where it runs is a line on the result card rather than a name of its own. The
+ * pips only ever tell apart options sharing an icon, so the variants keep the
+ * plain one they share with their page.
+ */
+const caddyListing: Listing = {
+	title: "Caddy",
+	page: "caddy",
+	emblem: { icon: "caddy" },
+};
+
+const traefikListing: Listing = {
+	title: "Traefik",
+	page: "traefik",
+	emblem: { icon: "traefik" },
+};
+
+const nginxListing: Listing = {
+	title: "Nginx",
+	page: "nginx",
+	emblem: { icon: "nginx" },
+};
+
+const zoraxyListing: Listing = {
+	title: "Zoraxy",
+	page: "zoraxy",
+	emblem: { icon: "zoraxy" },
+};
+
+/** None of these is sold by the plan, so no two tools share a page. */
 const reverseProxy: Record<ReverseProxySlug, Listing> = {
-	caddy: { title: "Caddy", page: "caddy", emblem: { icon: "caddy" } },
+	caddy: caddyListing,
+	"caddy-in-docker": caddyListing,
+	traefik: traefikListing,
+	"traefik-in-docker": traefikListing,
 	"caddy-docker-proxy": {
 		title: "Caddy Docker Proxy",
 		page: "caddy-docker-proxy",
 		emblem: { icon: "caddy", pips: ["docker"] },
 	},
-	traefik: { title: "Traefik", page: "traefik", emblem: { icon: "traefik" } },
-	nginx: { title: "Nginx", page: "nginx", emblem: { icon: "nginx" } },
 	"nginx-proxy-manager": {
 		title: "Nginx Proxy Manager",
 		page: "nginx-proxy-manager",
 		emblem: { icon: "nginx", pips: ["web-ui"] },
 	},
-	zoraxy: { title: "Zoraxy", page: "zoraxy", emblem: { icon: "zoraxy" } },
+	zoraxy: zoraxyListing,
+	"zoraxy-in-docker": zoraxyListing,
+	nginx: nginxListing,
+	"nginx-in-docker": nginxListing,
 	"tailscale-funnel": {
 		title: "Tailscale Funnel",
 		page: "tailscale-funnel",

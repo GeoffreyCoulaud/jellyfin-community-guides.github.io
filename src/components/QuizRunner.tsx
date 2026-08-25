@@ -67,6 +67,10 @@ const DocLink = ({ doc }: { doc: Doc }) => (
 	</a>
 );
 
+/** One page under one name is one link, whatever points at it. */
+const sameLink = (one: Doc, other: Doc) =>
+	one.href === other.href && one.title === other.title;
+
 /** Facts hold, preferences get weighed again: worth knowing before answering. */
 const kindOf = <O extends Option>(question: Question<O> | undefined) =>
 	question === undefined
@@ -106,6 +110,14 @@ const Result = <O extends Option>({
 	const match = doc(option);
 	const extra = guides?.(option) ?? [];
 	const listed = traits?.(option) ?? [];
+	// Running one tool two ways is two options, and one page to send them to
+	const others = alternatives
+		.map(doc)
+		.filter((other) => !sameLink(other, match))
+		.filter(
+			(other, index, all) =>
+				all.findIndex((one) => sameLink(one, other)) === index,
+		);
 	const pros = listed.filter((trait) => trait.tone === "pro");
 	const cons = listed.filter((trait) => trait.tone === "con");
 
@@ -121,16 +133,16 @@ const Result = <O extends Option>({
 				</a>
 			</p>
 
-			{alternatives.length > 0 && (
+			{others.length > 0 && (
 				<div className="quiz-block">
 					<h3 className="quiz-heading">Just as good here</h3>
 					<p className="quiz-note">
 						Nothing left to ask tells these apart from {match.title}.
 					</p>
 					<ul className="quiz-links">
-						{alternatives.map((other) => (
-							<li key={other.slug}>
-								<DocLink doc={doc(other)} />
+						{others.map((other) => (
+							<li key={`${other.href} ${other.title}`}>
+								<DocLink doc={other} />
 							</li>
 						))}
 					</ul>

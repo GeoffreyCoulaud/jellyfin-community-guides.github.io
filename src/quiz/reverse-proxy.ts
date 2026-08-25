@@ -9,6 +9,23 @@ import {
 /** A password of its own, a login page it delegates to, or nothing at all. */
 type Authentication = "sso" | "password" | "none";
 
+/** Where it runs. An option is one tool run one way, never the tool alone. */
+type Deployment = "native" | "docker";
+
+/**
+ * What a certificate proved in DNS costs to set up, the DNS challenge being the
+ * only one open to a service the internet cannot reach.
+ */
+type DnsChallenge =
+	/** A line of configuration: every provider is already in there. */
+	| "included"
+	/** One command, the module joining the binary it ships with. */
+	| "extra-package"
+	/** An image of your own to build, and to build again at every update. */
+	| "custom-build"
+	/** Certbot beside it, a second tool with a configuration of its own. */
+	| "external";
+
 /**
  * Only worth running when the resolved remote access method serves no HTTPS of
  * its own, which is what earns it the "reverse-proxy" guide over there.
@@ -28,17 +45,16 @@ export type ReverseProxy = {
 	readsContainerLabels: boolean;
 	isSetUpWithACommand: boolean;
 	isDependentOnThirdParty: boolean;
-	/** Ships as a container and nothing else, so Docker comes with it. */
-	needsDocker: boolean;
+	/**
+	 * A tool running both ways is two options, one each: a plugin does not cost
+	 * the same on a package as in an image, and one option cannot hold both
+	 * answers at once.
+	 */
+	deployment: Deployment;
 	/** No bandwidth cap or terms of service getting in the way of video. */
 	isHighBandwidthFriendly: boolean;
 	needsDomain: boolean;
-	/**
-	 * Gets a certificate by proving the name in DNS, the only challenge open to a
-	 * service the internet cannot reach. Caddy has the providers as modules to
-	 * compile in, and the nginx ACME module answers over HTTP only.
-	 */
-	hasDnsChallenge: boolean;
+	dnsChallenge: DnsChallenge;
 	/** How far it goes in front of a service, before the request reaches it. */
 	authentication: Authentication;
 	/**
@@ -48,55 +64,94 @@ export type ReverseProxy = {
 	servesOneAddress: boolean;
 };
 
+/** What Caddy is wherever it runs, the DNS module being the one thing that moves. */
+const caddy = {
+	family: "caddy",
+	hasWebInterface: false,
+	hasConfigFile: true,
+	readsContainerLabels: false,
+	isSetUpWithACommand: false,
+	isDependentOnThirdParty: false,
+	isHighBandwidthFriendly: true,
+	needsDomain: true,
+	authentication: "sso",
+	servesOneAddress: false,
+} as const;
+
+const traefik = {
+	family: "traefik",
+	hasWebInterface: false,
+	hasConfigFile: true,
+	readsContainerLabels: true,
+	isSetUpWithACommand: false,
+	isDependentOnThirdParty: false,
+	isHighBandwidthFriendly: true,
+	needsDomain: true,
+	// lego is compiled in, and every provider it knows with it
+	dnsChallenge: "included",
+	authentication: "sso",
+	servesOneAddress: false,
+} as const;
+
+const nginx = {
+	family: "nginx",
+	hasWebInterface: false,
+	hasConfigFile: true,
+	readsContainerLabels: false,
+	isSetUpWithACommand: false,
+	isDependentOnThirdParty: false,
+	isHighBandwidthFriendly: true,
+	needsDomain: true,
+	// Its own ACME module answers over HTTP only, so DNS-01 is certbot's job
+	dnsChallenge: "external",
+	authentication: "sso",
+	servesOneAddress: false,
+} as const;
+
+const zoraxy = {
+	family: "zoraxy",
+	hasWebInterface: true,
+	hasConfigFile: false,
+	readsContainerLabels: false,
+	isSetUpWithACommand: false,
+	isDependentOnThirdParty: false,
+	isHighBandwidthFriendly: true,
+	needsDomain: true,
+	// The provider and its credentials are fields in the certificate form
+	dnsChallenge: "included",
+	authentication: "sso",
+	servesOneAddress: false,
+} as const;
+
 /**
  * Declaration order breaks ties, simplest first: a beginner with no habit of
- * any of them is better served by a Caddyfile than by a name they don't know.
+ * any of them is better served by a Caddyfile than by a name they don't know,
+ * and by a package than by an image to keep building.
  */
 const reverseProxies = [
 	{
+		...caddy,
 		slug: "caddy",
-		family: "caddy",
-		hasWebInterface: false,
-		hasConfigFile: true,
-		readsContainerLabels: false,
-		isSetUpWithACommand: false,
-		isDependentOnThirdParty: false,
-		needsDocker: false,
-		isHighBandwidthFriendly: true,
-		needsDomain: true,
-		hasDnsChallenge: false,
-		authentication: "sso",
-		servesOneAddress: false,
+		deployment: "native",
+		// caddy add-package swaps the binary for one carrying the provider module
+		dnsChallenge: "extra-package",
 	},
 	{
-		slug: "traefik",
-		family: "traefik",
-		hasWebInterface: false,
-		hasConfigFile: true,
-		readsContainerLabels: true,
-		isSetUpWithACommand: false,
-		isDependentOnThirdParty: false,
-		needsDocker: false,
-		isHighBandwidthFriendly: true,
-		needsDomain: true,
-		hasDnsChallenge: true,
-		authentication: "sso",
-		servesOneAddress: false,
+		...caddy,
+		slug: "caddy-in-docker",
+		deployment: "docker",
+		// Nothing to swap inside an image: the module goes in through xcaddy, in
+		// a Dockerfile of your own
+		dnsChallenge: "custom-build",
 	},
+	{ ...traefik, slug: "traefik", deployment: "native" },
+	{ ...traefik, slug: "traefik-in-docker", deployment: "docker" },
 	{
+		...caddy,
 		slug: "caddy-docker-proxy",
-		family: "caddy",
-		hasWebInterface: false,
-		hasConfigFile: true,
 		readsContainerLabels: true,
-		isSetUpWithACommand: false,
-		isDependentOnThirdParty: false,
-		needsDocker: true,
-		isHighBandwidthFriendly: true,
-		needsDomain: true,
-		hasDnsChallenge: false,
-		authentication: "sso",
-		servesOneAddress: false,
+		deployment: "docker",
+		dnsChallenge: "custom-build",
 	},
 	{
 		slug: "nginx-proxy-manager",
@@ -106,47 +161,31 @@ const reverseProxies = [
 		readsContainerLabels: false,
 		isSetUpWithACommand: false,
 		isDependentOnThirdParty: false,
-		needsDocker: true,
+		deployment: "docker",
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
-		hasDnsChallenge: true,
+		// certbot and its DNS plugins ride along in the image, the provider being
+		// picked from a list in the interface
+		dnsChallenge: "included",
 		authentication: "password",
 		servesOneAddress: false,
 	},
 	{
-		// The only web interface that is not a container, which is what a spare
-		// Windows or Mac machine without Docker is otherwise left without
+		// The only web interface that runs outside a container, which is what a
+		// spare Windows or Mac machine without Docker is otherwise left without
+		...zoraxy,
 		slug: "zoraxy",
-		family: "zoraxy",
-		hasWebInterface: true,
-		hasConfigFile: false,
-		readsContainerLabels: false,
-		isSetUpWithACommand: false,
-		isDependentOnThirdParty: false,
-		needsDocker: false,
-		isHighBandwidthFriendly: true,
-		needsDomain: true,
-		hasDnsChallenge: true,
-		authentication: "sso",
-		servesOneAddress: false,
+		deployment: "native",
 	},
+	{ ...zoraxy, slug: "zoraxy-in-docker", deployment: "docker" },
 	{
 		// For the nginx habit that wants a config file, which Nginx Proxy Manager
 		// does not give
+		...nginx,
 		slug: "nginx",
-		family: "nginx",
-		hasWebInterface: false,
-		hasConfigFile: true,
-		readsContainerLabels: false,
-		isSetUpWithACommand: false,
-		isDependentOnThirdParty: false,
-		needsDocker: false,
-		isHighBandwidthFriendly: true,
-		needsDomain: true,
-		hasDnsChallenge: false,
-		authentication: "sso",
-		servesOneAddress: false,
+		deployment: "native",
 	},
+	{ ...nginx, slug: "nginx-in-docker", deployment: "docker" },
 	{
 		slug: "tailscale-funnel",
 		family: "tailscale",
@@ -155,16 +194,22 @@ const reverseProxies = [
 		readsContainerLabels: false,
 		isSetUpWithACommand: true,
 		isDependentOnThirdParty: true,
-		needsDocker: false,
+		// The guide installs the daemon on the machine, funnel being a command
+		deployment: "native",
 		isHighBandwidthFriendly: false,
 		needsDomain: false,
-		hasDnsChallenge: false,
+		// The name is Tailscale's to prove, certificate included
+		dnsChallenge: "included",
 		authentication: "none",
 		servesOneAddress: true,
 	},
 ] as const satisfies readonly ReverseProxy[];
 
 export type ReverseProxySlug = (typeof reverseProxies)[number]["slug"];
+
+/** Within reach: nothing to build, and no second tool to run beside it. */
+const hasDnsChallenge = (one: ReverseProxy) =>
+	one.dnsChallenge === "included" || one.dnsChallenge === "extra-package";
 
 /**
  * What the proxy is like, whatever the quiz happened to ask, so the result reads
@@ -190,9 +235,15 @@ const axes: readonly Axis<ReverseProxy>[] = [
 		// HTTP-01 needs the name to answer on the open internet, which a service
 		// behind a VPN never does
 		applies: (one) => one.needsDomain,
-		holds: (one) => one.hasDnsChallenge,
-		pro: "A DNS challenge, so even an unpublished service gets HTTPS",
-		con: "No DNS challenge: HTTPS only for what the internet can reach",
+		holds: hasDnsChallenge,
+		pro: (one) =>
+			one.dnsChallenge === "included"
+				? "A DNS challenge, so even an unpublished service gets HTTPS"
+				: "A DNS challenge, once a command adds your DNS provider's module",
+		con: (one) =>
+			one.dnsChallenge === "custom-build"
+				? "A DNS challenge only from an image of your own, rebuilt at each update"
+				: "A DNS challenge only through certbot, a second tool to set up",
 	},
 	{
 		// Funnel publishes, full stop: there is no gate to put in front of it
@@ -227,8 +278,8 @@ const axes: readonly Axis<ReverseProxy>[] = [
 		pro: "A container carries its own route, next to the service itself",
 	},
 	{
-		holds: (one) => !one.needsDocker,
-		con: "Only runs in Docker",
+		holds: (one) => one.deployment === "native",
+		con: "Docker has to be there to run it",
 	},
 	{
 		holds: (one) => one.isSetUpWithACommand,
@@ -259,12 +310,18 @@ const questions = [
 		],
 	},
 	{
-		id: "docker",
-		kind: "fact",
-		question: "Do you run Docker?",
+		id: "deployment",
+		kind: "preference",
+		// Not the same tool twice: where it runs decides what a plugin costs, and
+		// half of these only ever ship as a container
+		question: "How will you run it?",
 		answers: [
-			{ label: "Yes", keep: keepAll },
-			{ label: "No", keep: (p) => !p.needsDocker },
+			{ label: "In Docker", keep: (p) => p.deployment === "docker" },
+			{
+				label: "Straight on the machine",
+				keep: (p) => p.deployment === "native",
+			},
+			{ label: "I don't mind", keep: keepAll },
 		],
 	},
 	{
@@ -323,9 +380,22 @@ const questions = [
 	},
 ] as const satisfies readonly Question<ReverseProxy>[];
 
+/**
+ * Nothing left to ask tells these two apart, yet one is plainly worse: it wants
+ * an image of your own, or a second tool, where the other has the challenge to
+ * hand. Only ever between options serving a domain of yours, the rest getting
+ * their certificate from somewhere else entirely.
+ */
+const worseThan = (candidate: ReverseProxy, other: ReverseProxy) =>
+	candidate.needsDomain &&
+	other.needsDomain &&
+	!hasDnsChallenge(candidate) &&
+	hasDnsChallenge(other);
+
 export const reverseProxyQuiz: Quiz<ReverseProxy> = {
 	options: reverseProxies,
 	questions,
+	worseThan,
 };
 
 /**
