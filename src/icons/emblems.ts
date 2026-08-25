@@ -27,14 +27,7 @@ export type IconName =
 	| "zoraxy";
 
 export type PipName =
-	| "cloud"
-	| "docker"
-	| "funnel"
-	| "home"
-	| "key"
-	| "paid"
-	| "vps"
-	| "web-ui";
+	"cloud" | "docker" | "funnel" | "home" | "key" | "paid" | "vps" | "web-ui";
 
 export type Emblem = { icon: IconName; pips?: readonly PipName[] };
 
@@ -68,7 +61,9 @@ const fileIn =
 	(name: Name) => {
 		const url = files[`./${directory}/${name}.svg`];
 		if (url === undefined)
-			throw new Error(`Missing icon file src/icons/${directory}/${name}.svg`);
+			throw new Error(
+				`Missing icon file src/icons/${directory}/${name}.svg`,
+			);
 		return url;
 	};
 

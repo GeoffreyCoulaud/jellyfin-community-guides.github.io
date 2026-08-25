@@ -173,7 +173,8 @@ const prune = <O extends Option>(quiz: Quiz<O>, steps: readonly Step<O>[]) => {
 		(one) =>
 			!kept.some(
 				(other) =>
-					quiz.worseThan?.(one, other) && subsumes(quiz, steps, other, one),
+					quiz.worseThan?.(one, other) &&
+					subsumes(quiz, steps, other, one),
 			),
 	);
 };
@@ -198,7 +199,9 @@ export const nextQuestion = <O extends Option>(
 ) => {
 	if (state.pool.length <= 1) return undefined;
 	return quiz.questions
-		.filter((q) => !wasAsked(state.steps, q.id) && splitsPool(q, state.pool))
+		.filter(
+			(q) => !wasAsked(state.steps, q.id) && splitsPool(q, state.pool),
+		)
 		.sort(
 			(a, b) =>
 				Number(b.asksFirst ?? false) - Number(a.asksFirst ?? false) ||
