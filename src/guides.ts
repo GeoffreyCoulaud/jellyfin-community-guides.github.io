@@ -5,7 +5,7 @@
  */
 
 import type { Emblem, IconName } from "./icons/emblems";
-import type { MethodSlug } from "./quiz/remote-access";
+import type { ExtraGuide, MethodSlug } from "./quiz/remote-access";
 import type { ReverseProxySlug } from "./quiz/reverse-proxy";
 
 /**
@@ -21,8 +21,9 @@ type Listing = { title: string; page: string; emblem: Emblem };
 /** A listing as the quiz hands it to the reader: the page, resolved. */
 export type Guide = { title: string; href: string; emblem: Emblem };
 
-const remoteAccessDirectory = "/guides/remote-access/";
-const reverseProxyDirectory = "/guides/reverse-proxy/";
+const remoteAccessDirectory = "/guides/remote-access";
+const reverseProxyDirectory = "/guides/reverse-proxy";
+const referenceDirectory = "/reference";
 
 const remoteAccess: Record<MethodSlug, Listing> = {
 	// Nobody's product: a router, an address family and a rented box you wire up
@@ -170,7 +171,7 @@ const reverseProxy: Record<ReverseProxySlug, Listing> = {
 
 const resolve = (directory: string, listing: Listing): Guide => ({
 	title: listing.title,
-	href: `${directory}${listing.page}/`,
+	href: `${directory}/${listing.page}/`,
 	emblem: listing.emblem,
 });
 
@@ -180,6 +181,36 @@ export const remoteAccessGuide = (slug: MethodSlug) =>
 export const reverseProxyGuide = (slug: ReverseProxySlug) =>
 	resolve(reverseProxyDirectory, reverseProxy[slug]);
 
+/** A page with no option behind it, so nothing to picture it by. */
+export type Extra = { title: string; href: string };
+
+/**
+ * What is left to set up once the method is picked. The reverse proxy is a quiz
+ * of its own, the rest are pages under the reference directory.
+ */
+export const extraPages: Record<ExtraGuide, Extra> = {
+	"reverse-proxy": {
+		title: "Pick a reverse proxy for HTTPS",
+		href: "/quiz/reverse-proxy/",
+	},
+	"get-domain": {
+		title: "Get a domain name",
+		href: `${referenceDirectory}/get-domain/`,
+	},
+	"dynamic-dns": {
+		title: "Keep a name pointing at your home",
+		href: `${referenceDirectory}/dynamic-dns/`,
+	},
+	"restrict-vpn-access": {
+		title: "Restrict what your users reach",
+		href: `${referenceDirectory}/restrict-vpn-access/`,
+	},
+	"private-dns": {
+		title: "Reach your machines by name",
+		href: `${referenceDirectory}/private-dns/`,
+	},
+};
+
 /**
  * The icon a page carries in the sidebar. Options sharing a page share their
  * icon by construction: nothing that changed the icon would leave the guide the
@@ -187,11 +218,11 @@ export const reverseProxyGuide = (slug: ReverseProxySlug) =>
  */
 const pageIcons: Record<string, IconName> = Object.fromEntries([
 	...Object.values(remoteAccess).map((listing) => [
-		`${remoteAccessDirectory}${listing.page}/`,
+		`${remoteAccessDirectory}/${listing.page}/`,
 		listing.emblem.icon,
 	]),
 	...Object.values(reverseProxy).map((listing) => [
-		`${reverseProxyDirectory}${listing.page}/`,
+		`${reverseProxyDirectory}/${listing.page}/`,
 		listing.emblem.icon,
 	]),
 ]);

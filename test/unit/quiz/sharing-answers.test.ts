@@ -1,49 +1,24 @@
 /** Answers written into the address bar, and read back off it. */
 
 import { describe, expect, it } from "vitest";
-import {
-	applyAnswer,
-	startQuiz,
-	type QuizState,
-	type Step,
-} from "../../src/quiz/engine";
-import { decodeState, encodeState, type Cited } from "../../src/quiz/share";
+import { startQuiz, type QuizState } from "../../../src/quiz/engine";
+import { decodeState, encodeState, type Cited } from "../../../src/quiz/share";
+import { answered, labels, pool, refusal } from "../../fixtures/answering";
 import {
 	drink,
 	drinkTraits,
 	drinksQuiz,
 	type Drink,
-} from "../fixtures/drinks-quiz";
+} from "../../fixtures/drinks-quiz";
 
 const quiz = drinksQuiz;
 
-/** A state reached the way the runner reaches one: by answering. */
-const answered = (...picked: readonly [string, string][]) =>
-	picked.reduce((state: QuizState<Drink>, [asked, id]) => {
-		const question = quiz.questions.find((one) => one.id === asked)!;
-		const answer = question.answers.find((one) => one.id === id)!;
-		return applyAnswer(quiz, state, question, answer);
-	}, startQuiz(quiz));
-
-/** A con refused off a card, the way the result screen refuses one. */
-const refusal = (slug: string, axis: string): Step<Drink> => {
-	const one = drink(slug);
-	const con = drinkTraits(one).find((trait) => trait.id === axis)!;
-	return { id: con.id, label: con.label, keep: con.keep!, option: one };
-};
-
 const restored = (...cited: Cited[]) => decodeState(quiz, cited, drinkTraits);
-
-const labels = (state: QuizState<Drink> | undefined) =>
-	state?.steps.map((step) => step.label);
-
-const pool = (state: QuizState<Drink> | undefined) =>
-	state?.pool.map((one) => one.slug);
 
 describe("encodeState", () => {
 	it("names an answer by its question and its id", () => {
 		// given a quiz answered once
-		const state = answered(["temperature", "hot"]);
+		const state = answered(quiz, ["temperature", "hot"]);
 
 		// when the state is encoded
 		const cited = encodeState(state);
@@ -54,7 +29,11 @@ describe("encodeState", () => {
 
 	it("keeps answers in the order they were given", () => {
 		// given two questions answered, the second one first
-		const state = answered(["caffeine", "no"], ["temperature", "hot"]);
+		const state = answered(
+			quiz,
+			["caffeine", "no"],
+			["temperature", "hot"],
+		);
 
 		// when the state is encoded
 		const cited = encodeState(state);
@@ -70,7 +49,7 @@ describe("encodeState", () => {
 		// given a con refused on the tea card
 		const state: QuizState<Drink> = {
 			pool: [],
-			steps: [refusal("tea", "caffeine")],
+			steps: [refusal(drinkTraits, drink("tea"), "caffeine")],
 		};
 
 		// when the state is encoded
@@ -202,7 +181,7 @@ describe("decodeState", () => {
 	it("reads back what a real query string carries", () => {
 		// given answers written into an address
 		const cited = encodeState(
-			answered(["temperature", "hot"], ["caffeine", "yes"]),
+			answered(quiz, ["temperature", "hot"], ["caffeine", "yes"]),
 		)!;
 		const query = new URLSearchParams(
 			cited.map(([name, id]) => [name, id]),
