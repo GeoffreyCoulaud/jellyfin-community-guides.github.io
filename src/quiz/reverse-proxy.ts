@@ -293,6 +293,12 @@ const axes: readonly Axis<ReverseProxy>[] = [
 
 export const traits = (proxy: ReverseProxy) => describe(proxy, axes);
 
+/** The way out of a fact, kept to the safe side: a guess rules nothing out. */
+const dontKnow = "I don't know";
+
+/** The way out of a preference, which takes no side and so rules nothing out. */
+const dontMind = "I don't mind";
+
 const questions = [
 	{
 		id: "already-used",
@@ -321,7 +327,7 @@ const questions = [
 				label: "Straight on the machine",
 				keep: (p) => p.deployment === "native",
 			},
-			{ label: "I don't mind", keep: keepAll },
+			{ label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -334,7 +340,7 @@ const questions = [
 		answers: [
 			{ label: "Yes", keep: (p) => p.isHighBandwidthFriendly },
 			{ label: "No", keep: keepAll },
-			{ label: "I don't know", keep: (p) => p.isHighBandwidthFriendly },
+			{ label: dontKnow, keep: (p) => p.isHighBandwidthFriendly },
 		],
 	},
 	{
@@ -350,7 +356,7 @@ const questions = [
 				label: "Straight from my server to my users",
 				keep: (p) => !p.isDependentOnThirdParty,
 			},
-			{ label: "I don't mind", keep: keepAll },
+			{ label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -360,7 +366,7 @@ const questions = [
 		answers: [
 			{ label: "A domain name of my own", keep: (p) => p.needsDomain },
 			{ label: "Whatever address I am given", keep: (p) => !p.needsDomain },
-			{ label: "I don't mind", keep: keepAll },
+			{ label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -375,7 +381,7 @@ const questions = [
 				keep: (p) => p.readsContainerLabels,
 			},
 			{ label: "With one command", keep: (p) => p.isSetUpWithACommand },
-			{ label: "I don't mind", keep: keepAll },
+			{ label: dontMind, keep: keepAll },
 		],
 	},
 ] as const satisfies readonly Question<ReverseProxy>[];

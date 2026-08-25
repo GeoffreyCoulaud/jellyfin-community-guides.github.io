@@ -615,10 +615,13 @@ const servesUsers = (users: number) => (method: RemoteAccessMethod) =>
 const servesDevices = (devices: number) => (method: RemoteAccessMethod) =>
 	method.maxDevices === null || method.maxDevices >= devices;
 
-/**
- * Answers read yes, then no, then "I don't know": the safe side of a fact,
- * nothing at all on a preference.
- */
+/** The way out of a fact, kept to the safe side: a guess rules nothing out. */
+const dontKnow = "I don't know";
+
+/** The way out of a preference, which takes no side and so rules nothing out. */
+const dontMind = "I don't mind";
+
+/** Answers read yes, then no, then the way out, where there is one. */
 const questions = [
 	{
 		id: "port-forwarding",
@@ -635,7 +638,7 @@ const questions = [
 				keep: worksWithoutPublicIpv6,
 			},
 			{ label: "No, or I'd rather not", keep: worksWithoutForwardedPort },
-			{ label: "I don't know", keep: worksWithoutForwardedPort },
+			{ label: dontKnow, keep: worksWithoutForwardedPort },
 		],
 	},
 	{
@@ -646,7 +649,7 @@ const questions = [
 		answers: [
 			{ label: "Yes", keep: keepAll },
 			{ label: "No", keep: worksWithoutPublicIpv6 },
-			{ label: "I don't know", keep: worksWithoutPublicIpv6 },
+			{ label: dontKnow, keep: worksWithoutPublicIpv6 },
 		],
 	},
 	{
@@ -657,7 +660,7 @@ const questions = [
 			{ label: "Up to 5", keep: servesUsers(5) },
 			// An open ended count only fits a plan with no cap at all
 			{ label: "More than 5", keep: (m) => m.maxUsers === null },
-			{ label: "I don't know", keep: servesUsers(5) },
+			{ label: dontKnow, keep: servesUsers(5) },
 		],
 	},
 	{
@@ -669,7 +672,7 @@ const questions = [
 			{ label: "Up to 10", keep: servesDevices(10) },
 			{ label: "11 to 100", keep: servesDevices(100) },
 			{ label: "More than 100", keep: servesDevices(101) },
-			{ label: "I don't know", keep: servesDevices(10) },
+			{ label: dontKnow, keep: servesDevices(10) },
 		],
 	},
 	{
@@ -682,7 +685,7 @@ const questions = [
 		answers: [
 			{ label: "Yes", keep: (m) => m.isHighBandwidthFriendly },
 			{ label: "No", keep: keepAll },
-			{ label: "I don't know", keep: (m) => m.isHighBandwidthFriendly },
+			{ label: dontKnow, keep: (m) => m.isHighBandwidthFriendly },
 		],
 	},
 	{
@@ -738,7 +741,7 @@ const questions = [
 		answers: [
 			{ label: "Yes", keep: worksOnAnyTv },
 			{ label: "No", keep: keepAll },
-			{ label: "I don't know", keep: worksOnAnyTv },
+			{ label: dontKnow, keep: worksOnAnyTv },
 		],
 	},
 	{
@@ -755,7 +758,7 @@ const questions = [
 				label: "With a web address, nothing to install",
 				keep: (m) => m.servesPublicServices,
 			},
-			{ label: "I don't mind", keep: keepAll },
+			{ label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -770,7 +773,7 @@ const questions = [
 				keep: (m) => entryPoint(m) === "rented",
 			},
 			{ label: "On a hosted service", keep: (m) => entryPoint(m) === "hosted" },
-			{ label: "I don't mind", keep: keepAll },
+			{ label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -781,9 +784,7 @@ const questions = [
 		answers: [
 			{ label: "The remote access tool", keep: handlesTlsItself },
 			{ label: "A separate reverse proxy", keep: (m) => !handlesTlsItself(m) },
-			// A preference nobody holds yet decides nothing: unlike the network
-			// facts, there is no unsafe side here, only a second tool or not
-			{ label: "I don't know", keep: keepAll },
+			{ label: dontMind, keep: keepAll },
 		],
 	},
 	{
@@ -794,7 +795,7 @@ const questions = [
 		answers: [
 			{ label: "In a web interface", keep: (m) => m.hasWebInterface },
 			{ label: "By logging in to the server", keep: (m) => !m.hasWebInterface },
-			{ label: "I don't mind", keep: keepAll },
+			{ label: dontMind, keep: keepAll },
 		],
 	},
 ] as const satisfies readonly Question<RemoteAccessMethod>[];
