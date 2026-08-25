@@ -19,6 +19,7 @@ export type IconName =
 	| "headscale"
 	| "netbird"
 	| "nginx"
+	| "npm"
 	| "pangolin"
 	| "tailscale"
 	| "traefik"
@@ -29,13 +30,11 @@ export type IconName =
 export type PipName =
 	| "cloud"
 	| "docker"
-	| "funnel"
 	| "home"
 	| "key"
 	| "labels"
 	| "paid"
-	| "vps"
-	| "web-ui";
+	| "vps";
 
 export type Emblem = { icon: IconName; pips?: readonly PipName[] };
 
@@ -43,13 +42,11 @@ export type Emblem = { icon: IconName; pips?: readonly PipName[] };
 const pipLabels: Record<PipName, string> = {
 	cloud: "hosted for you",
 	docker: "runs as a container",
-	funnel: "published with Funnel",
 	home: "runs at home",
 	key: "needs a licence key",
 	labels: "routed by container labels",
 	paid: "costs money every month",
 	vps: "runs on a server you rent",
-	"web-ui": "managed in a browser",
 };
 
 const iconFiles = import.meta.glob<string>("./svg/*.svg", {

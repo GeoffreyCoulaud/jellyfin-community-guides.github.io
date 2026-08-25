@@ -139,14 +139,14 @@ const reverseProxy: Record<ReverseProxySlug, Listing> = {
 	"nginx-proxy-manager": {
 		title: "Nginx Proxy Manager",
 		page: "nginx-proxy-manager",
-		emblem: { icon: "nginx", pips: ["web-ui"] },
+		emblem: { icon: "npm" },
 	},
 	zoraxy: { title: "Zoraxy", page: "zoraxy", emblem: { icon: "zoraxy" } },
 	nginx: { title: "Nginx", page: "nginx", emblem: { icon: "nginx" } },
 	"tailscale-funnel": {
 		title: "Tailscale Funnel",
 		page: "tailscale-funnel",
-		emblem: { icon: "tailscale", pips: ["funnel"] },
+		emblem: { icon: "tailscale" },
 	},
 };
 
