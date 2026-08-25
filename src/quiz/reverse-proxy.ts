@@ -222,37 +222,35 @@ const axes: readonly Axis<ReverseProxy>[] = [
 	{
 		id: "third-party",
 		holds: (one) => !one.isDependentOnThirdParty,
-		pro: "Traffic goes straight from your server",
+		pro: "No third party before the reverse proxy",
 		con: "Your traffic goes through a company's servers",
 	},
 	{
 		id: "own-domain",
 		holds: (one) => !one.needsDomain,
 		pro: "No domain to buy",
-		con: "A domain name of your own",
+		con: "Needs a domain name of your own",
 	},
 	{
 		id: "dns-challenge",
-		// HTTP-01 needs the name to answer on the open internet, which a service
-		// behind a VPN never does
+		// The DNS challenge, never named as such: what it buys is a certificate
+		// for a name that answers nowhere public, which is what a reader has to
+		// recognise their own case in
 		applies: (one) => one.needsDomain,
 		holds: hasDnsChallenge,
-		pro: (one) =>
-			one.dnsChallenge === "included"
-				? "A DNS challenge, so even an unpublished service gets HTTPS"
-				: "A DNS challenge, once a command adds your DNS provider's module",
+		pro: "HTTPS for private services",
 		con: (one) =>
 			one.dnsChallenge === "custom-build"
-				? "A DNS challenge only from an image of your own, rebuilt at each update"
-				: "A DNS challenge only through certbot, a second tool to set up",
+				? "HTTPS for private services, but only from a custom Docker image, rebuilt at every update"
+				: "HTTPS for private services, but only with certbot set up beside it",
 	},
 	{
 		id: "single-sign-on",
 		// Funnel publishes, full stop: there is no gate to put in front of it
 		applies: (one) => one.authentication !== "none",
 		holds: (one) => one.authentication === "sso",
-		pro: "One login in front of every service, with Authelia or the like",
-		con: "A password per service, and no single login for all of them",
+		pro: "Supports single sign on",
+		con: "Per service passwords, but no single sign on",
 	},
 	{
 		id: "authentication",
@@ -264,7 +262,8 @@ const axes: readonly Axis<ReverseProxy>[] = [
 	{
 		id: "web-interface",
 		holds: (one) => one.hasWebInterface,
-		pro: "Services are added in a web interface",
+		pro: "Has a visual interface",
+		con: "No visual interface",
 	},
 	{
 		id: "versionable",
@@ -272,22 +271,22 @@ const axes: readonly Axis<ReverseProxy>[] = [
 		// what a file and a label have over it is being text of yours
 		applies: (one) => one.hasWebInterface,
 		holds: (one) => one.hasConfigFile || one.readsContainerLabels,
-		con: "Its routes live in a store of its own, nothing to keep in git",
+		con: "Non declarative configuration",
 	},
 	{
 		id: "config-file",
 		holds: (one) => one.hasConfigFile,
-		pro: "Services are added in a config file, which you can version",
+		pro: "Routes can be declared in a config file",
 	},
 	{
 		id: "container-labels",
 		holds: (one) => one.readsContainerLabels,
-		pro: "A container carries its own route, next to the service itself",
+		pro: "Routes can be declared with container labels",
 	},
 	{
 		id: "needs-docker",
 		holds: (one) => one.runsNatively,
-		con: "Docker has to be there to run it",
+		con: "Only runs in Docker",
 	},
 	{
 		id: "one-command",
