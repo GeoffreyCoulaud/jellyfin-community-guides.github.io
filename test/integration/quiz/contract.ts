@@ -129,6 +129,16 @@ export const behavesLikeAQuiz = <O extends Option>({
 			expect(twice(slugs)).toEqual([]);
 		});
 
+		it("gives every option a name of its own", () => {
+			// given the name each option is listed under
+			// when they are read against one another
+			const titles = quiz.options.map((option) => guide(option).title);
+
+			// then no two share one: an option nobody can tell from another is
+			// one the pool counts twice and nobody can pick between
+			expect(twice(titles)).toEqual([]);
+		});
+
 		it("gives every question and answer an id of its own", () => {
 			// given the questions it asks
 			// when their ids are read

@@ -27,7 +27,15 @@ export type IconName =
 	| "zoraxy";
 
 export type PipName =
-	"cloud" | "docker" | "funnel" | "home" | "key" | "paid" | "vps" | "web-ui";
+	| "cloud"
+	| "docker"
+	| "funnel"
+	| "home"
+	| "key"
+	| "labels"
+	| "paid"
+	| "vps"
+	| "web-ui";
 
 export type Emblem = { icon: IconName; pips?: readonly PipName[] };
 
@@ -38,6 +46,7 @@ const pipLabels: Record<PipName, string> = {
 	funnel: "published with Funnel",
 	home: "runs at home",
 	key: "needs a licence key",
+	labels: "routed by container labels",
 	paid: "costs money every month",
 	vps: "runs on a server you rent",
 	"web-ui": "managed in a browser",

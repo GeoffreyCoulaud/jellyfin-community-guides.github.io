@@ -113,55 +113,36 @@ const remoteAccess: Record<MethodSlug, Listing> = {
 };
 
 /**
- * A tool run two ways is two options on one page: the guide covers both, and
- * where it runs is a line on the result card rather than a name of its own. The
- * pips only ever tell apart options sharing an icon, so the variants keep the
- * plain one they share with their page.
+ * A tool that runs either way is one option, its guide covering both. Caddy is
+ * the exception, and so the only one named twice: its DNS module is compiled
+ * in, which one command does to a package and a Dockerfile of your own does to
+ * an image. Two options, still one page, the name carrying the difference.
  */
-const caddyListing: Listing = {
-	title: "Caddy",
-	page: "caddy",
-	emblem: { icon: "caddy" },
-};
-
-const traefikListing: Listing = {
-	title: "Traefik",
-	page: "traefik",
-	emblem: { icon: "traefik" },
-};
-
-const nginxListing: Listing = {
-	title: "Nginx",
-	page: "nginx",
-	emblem: { icon: "nginx" },
-};
-
-const zoraxyListing: Listing = {
-	title: "Zoraxy",
-	page: "zoraxy",
-	emblem: { icon: "zoraxy" },
-};
-
-/** None of these is sold by the plan, so no two tools share a page. */
 const reverseProxy: Record<ReverseProxySlug, Listing> = {
-	caddy: caddyListing,
-	"caddy-in-docker": caddyListing,
-	traefik: traefikListing,
-	"traefik-in-docker": traefikListing,
+	caddy: { title: "Caddy", page: "caddy", emblem: { icon: "caddy" } },
+	"caddy-in-docker": {
+		title: "Caddy in Docker",
+		page: "caddy",
+		emblem: { icon: "caddy", pips: ["docker"] },
+	},
+	traefik: {
+		title: "Traefik",
+		page: "traefik",
+		emblem: { icon: "traefik" },
+	},
+	// A container too, so the pip carries what actually tells it from the others
 	"caddy-docker-proxy": {
 		title: "Caddy Docker Proxy",
 		page: "caddy-docker-proxy",
-		emblem: { icon: "caddy", pips: ["docker"] },
+		emblem: { icon: "caddy", pips: ["labels"] },
 	},
 	"nginx-proxy-manager": {
 		title: "Nginx Proxy Manager",
 		page: "nginx-proxy-manager",
 		emblem: { icon: "nginx", pips: ["web-ui"] },
 	},
-	zoraxy: zoraxyListing,
-	"zoraxy-in-docker": zoraxyListing,
-	nginx: nginxListing,
-	"nginx-in-docker": nginxListing,
+	zoraxy: { title: "Zoraxy", page: "zoraxy", emblem: { icon: "zoraxy" } },
+	nginx: { title: "Nginx", page: "nginx", emblem: { icon: "nginx" } },
 	"tailscale-funnel": {
 		title: "Tailscale Funnel",
 		page: "tailscale-funnel",

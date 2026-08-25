@@ -25,3 +25,7 @@ exists to be faithful to. The three share `diy.svg`, the hammer and wrench from
 
 `pips/` holds the small glyphs that tell two options of the same tool apart. They
 are drawn as CSS masks, so their colour comes from the page, not from the file.
+
+`labels.svg` traces the label mark from
+[Material Design Icons](https://pictogrammers.com/library/mdi/icon/label/)
+(Apache 2.0), fitted to the square the others are drawn on.
