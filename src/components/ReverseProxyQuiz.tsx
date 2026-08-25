@@ -5,7 +5,7 @@ import {
 	type ReverseProxySlug,
 } from "../quiz/reverse-proxy";
 import { reverseProxyGuide } from "../guides";
-import { QuizRunner } from "./QuizRunner";
+import { QuizRunner } from "./quiz/QuizRunner";
 
 const doc = (proxy: ReverseProxy) =>
 	reverseProxyGuide(proxy.slug as ReverseProxySlug);

@@ -365,7 +365,10 @@ const questions = [
 		question: "What address should your services answer on?",
 		answers: [
 			{ label: "A domain name of my own", keep: (p) => p.needsDomain },
-			{ label: "Whatever address I am given", keep: (p) => !p.needsDomain },
+			{
+				label: "Whatever address I am given",
+				keep: (p) => !p.needsDomain,
+			},
 			{ label: dontMind, keep: keepAll },
 		],
 	},

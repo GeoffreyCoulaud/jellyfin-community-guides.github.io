@@ -33,12 +33,19 @@ export const Emblem = ({ emblem, size = "text", withPips = false }: Props) => {
 		<span className={`emblem emblem-${size}`}>
 			<img className="emblem-icon" src={iconUrl(emblem.icon)} alt="" />
 			{pips.length > 0 && (
-				<span className="emblem-pips" title={pips.map(pipLabel).join(", ")}>
+				<span
+					className="emblem-pips"
+					title={pips.map(pipLabel).join(", ")}
+				>
 					{pips.map((pip) => (
 						<span
 							key={pip}
 							className="emblem-pip"
-							style={{ "--pip": `url("${pipUrl(pip)}")` } as CSSProperties}
+							style={
+								{
+									"--pip": `url("${pipUrl(pip)}")`,
+								} as CSSProperties
+							}
 						/>
 					))}
 				</span>

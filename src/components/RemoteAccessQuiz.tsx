@@ -7,7 +7,7 @@ import {
 	type MethodSlug,
 } from "../quiz/remote-access";
 import { remoteAccessGuide } from "../guides";
-import { QuizRunner, type Doc } from "./QuizRunner";
+import { QuizRunner, type Doc } from "./quiz/QuizRunner";
 
 /** The reverse proxy is a quiz of its own, the rest are pages under /reference. */
 const extras: Record<ExtraGuide, Doc> = {
@@ -15,8 +15,8 @@ const extras: Record<ExtraGuide, Doc> = {
 		title: "Pick a reverse proxy for HTTPS",
 		href: "/quiz/reverse-proxy/",
 	},
-	"get-domain": { 
-		title: "Get a domain name", 
+	"get-domain": {
+		title: "Get a domain name",
 		href: "/reference/get-domain/",
 	},
 	"dynamic-dns": {

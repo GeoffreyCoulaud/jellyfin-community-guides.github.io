@@ -305,7 +305,11 @@ const methods = [
 		androidTv: "official",
 		fireTv: "sideload",
 		hasWebInterface: false,
-		setupSteps: ["install-package", "edit-config-file", "per-user-key-exchange"],
+		setupSteps: [
+			"install-package",
+			"edit-config-file",
+			"per-user-key-exchange",
+		],
 		needsDomain: false,
 	},
 	{
@@ -454,7 +458,8 @@ const needsAReverseProxy = (method: RemoteAccessMethod) =>
 	(method.servesPrivateServices && !method.handlesTlsForPrivateServices);
 
 /** Nothing to install, so any box with a Jellyfin app or a browser gets there. */
-const worksOnAnyTv = (method: RemoteAccessMethod) => method.servesPublicServices;
+const worksOnAnyTv = (method: RemoteAccessMethod) =>
+	method.servesPublicServices;
 
 /** Clients aim at your home address, which your ISP can change under you. */
 const isReachedAtHome = (method: RemoteAccessMethod) =>
@@ -564,7 +569,8 @@ const axes: readonly Axis<RemoteAccessMethod>[] = [
 		// One axis per half, since a method can cover one and not the other:
 		// Pangolin CE puts HTTPS on what it publishes and none on the rest
 		applies: (one) => one.servesPublicServices,
-		holds: (one) => !one.servesPublicServices || one.handlesTlsForPublicServices,
+		holds: (one) =>
+			!one.servesPublicServices || one.handlesTlsForPublicServices,
 		pro: "HTTPS on what you publish",
 		con: "A reverse proxy to add for HTTPS on what you publish",
 	},
@@ -719,7 +725,8 @@ const questions = [
 	{
 		id: "third-party",
 		kind: "preference",
-		question: "Should remote access keep working if its provider went away?",
+		question:
+			"Should remote access keep working if its provider went away?",
 		help: "Some of these need an account, a coordination server or a licence check that you do not run, and stop the day it stops. A server you rent does not count: what runs on it is yours.",
 		answers: [
 			{ label: "Yes", keep: (m) => !m.isDependentOnThirdParty },
@@ -786,12 +793,18 @@ const questions = [
 		question: "Where should connections from outside arrive?",
 		help: "A hosted service is theirs to run: an account instead of a server.",
 		answers: [
-			{ label: "At home, on my own line", keep: (m) => entryPoint(m) === "home" },
+			{
+				label: "At home, on my own line",
+				keep: (m) => entryPoint(m) === "home",
+			},
 			{
 				label: "On an internet-facing server, rented by me",
 				keep: (m) => entryPoint(m) === "rented",
 			},
-			{ label: "On a hosted service", keep: (m) => entryPoint(m) === "hosted" },
+			{
+				label: "On a hosted service",
+				keep: (m) => entryPoint(m) === "hosted",
+			},
 			{ label: dontMind, keep: keepAll },
 		],
 	},
@@ -802,7 +815,10 @@ const questions = [
 		help: "A separate reverse proxy is a second tool to set up, which the reverse proxy quiz picks for you.",
 		answers: [
 			{ label: "The remote access tool", keep: handlesTlsItself },
-			{ label: "A separate reverse proxy", keep: (m) => !handlesTlsItself(m) },
+			{
+				label: "A separate reverse proxy",
+				keep: (m) => !handlesTlsItself(m),
+			},
 			{ label: dontMind, keep: keepAll },
 		],
 	},
@@ -813,7 +829,10 @@ const questions = [
 		help: "A web interface adds users, devices and routes from any browser, on any of your machines. Without one, you log in to the server itself to do it there, in a file or with a command depending on the tool.",
 		answers: [
 			{ label: "In a web interface", keep: (m) => m.hasWebInterface },
-			{ label: "By logging in to the server", keep: (m) => !m.hasWebInterface },
+			{
+				label: "By logging in to the server",
+				keep: (m) => !m.hasWebInterface,
+			},
 			{ label: dontMind, keep: keepAll },
 		],
 	},
@@ -879,6 +898,8 @@ export const extraGuides = (method: RemoteAccessMethod): ExtraGuide[] => [
 	...(needsAReverseProxy(method) ? (["reverse-proxy"] as const) : []),
 	...(method.needsDomain ? (["get-domain"] as const) : []),
 	...(isReachedAtHome(method) ? (["dynamic-dns"] as const) : []),
-	...(method.reachesEveryLocalService ? (["restrict-vpn-access"] as const) : []),
+	...(method.reachesEveryLocalService
+		? (["restrict-vpn-access"] as const)
+		: []),
 	...(!method.hasBuiltInNameResolution ? (["private-dns"] as const) : []),
 ];

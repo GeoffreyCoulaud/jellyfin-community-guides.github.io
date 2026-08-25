@@ -1,0 +1,97 @@
+import { useState } from "react";
+import {
+	applyAnswer,
+	blockers,
+	dropStep,
+	nextQuestion,
+	reconsider,
+	resolve,
+	rewind,
+	startQuiz,
+	type Option,
+	type Quiz,
+	type QuizState,
+	type Trait,
+} from "../../quiz/engine";
+import { Asking } from "./Asking";
+import { Progress } from "./Progress";
+import { Recap } from "./Recap";
+import { Result } from "./Result";
+import { givesFirst } from "./Step";
+import { Stuck } from "./Stuck";
+import type { Doc } from "./Doc";
+// The whole quiz is drawn from here, so this is the one file to bring its styles
+import "./quiz.css";
+
+export type { Doc };
+
+type Props<O extends Option> = {
+	quiz: Quiz<O>;
+	doc: (option: O) => Doc;
+	guides?: (option: O) => Doc[];
+	/** What the option is like, pros and cons, whatever the quiz asked. */
+	traits?: (option: O) => Trait<O>[];
+};
+
+export const QuizRunner = <O extends Option>({
+	quiz,
+	doc,
+	guides,
+	traits,
+}: Props<O>) => {
+	const [state, setState] = useState<QuizState<O>>(() => startQuiz(quiz));
+	const question = nextQuestion(quiz, state);
+	const outcome = resolve(quiz, state);
+	const stuck =
+		outcome.status === "over-constrained"
+			? [...blockers(quiz, state)].sort(
+					(a, b) => givesFirst(a) - givesFirst(b),
+				)
+			: [];
+
+	return (
+		<div className="quiz not-content">
+			{/* The result names what is left, so the bar has nothing to add to it.
+			    Over-constrained keeps it: nothing is left to name there. */}
+			{outcome.status !== "resolved" && (
+				<Progress options={quiz.options} pool={state.pool} doc={doc} />
+			)}
+
+			{question !== undefined && (
+				<Asking
+					question={question}
+					pool={state.pool}
+					onAnswer={(picked) =>
+						setState(applyAnswer(quiz, state, question, picked))
+					}
+				/>
+			)}
+
+			{outcome.status === "resolved" && (
+				<Result
+					option={outcome.option}
+					alternatives={outcome.alternatives}
+					doc={doc}
+					guides={guides}
+					traits={traits}
+					onDealbreaker={(refused) =>
+						setState(reconsider(quiz, state, refused))
+					}
+				/>
+			)}
+
+			{outcome.status === "over-constrained" && (
+				<Stuck
+					blocking={stuck}
+					onDrop={(step) => setState(dropStep(quiz, state, step))}
+				/>
+			)}
+
+			<Recap
+				steps={state.steps}
+				folded={question === undefined}
+				onRewind={(index) => setState(rewind(quiz, state, index))}
+			/>
+		</div>
+	);
+};
