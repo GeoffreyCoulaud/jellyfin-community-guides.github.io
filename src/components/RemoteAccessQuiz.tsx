@@ -29,11 +29,25 @@ const titles: Record<MethodSlug, string> = {
 	"pangolin-ee-at-home": "Pangolin EE at home",
 };
 
-const guideTitles: Record<ExtraGuide, string> = {
-	"get-domain": "Get a domain name",
-	"dynamic-dns": "Keep a name pointing at your home",
-	"restrict-vpn-access": "Restrict what your users reach",
-	"private-dns": "Reach your machines by name",
+/** The reverse proxy is a quiz of its own, the rest are pages under /guides. */
+const extras: Record<ExtraGuide, Doc> = {
+	"reverse-proxy": {
+		title: "Pick a reverse proxy for HTTPS",
+		href: "/quiz/reverse-proxy/",
+	},
+	"get-domain": { title: "Get a domain name", href: "/guides/get-domain/" },
+	"dynamic-dns": {
+		title: "Keep a name pointing at your home",
+		href: "/guides/dynamic-dns/",
+	},
+	"restrict-vpn-access": {
+		title: "Restrict what your users reach",
+		href: "/guides/restrict-vpn-access/",
+	},
+	"private-dns": {
+		title: "Reach your machines by name",
+		href: "/guides/private-dns/",
+	},
 };
 
 const doc = (method: Method): Doc => ({
@@ -42,10 +56,7 @@ const doc = (method: Method): Doc => ({
 });
 
 const guides = (method: Method): Doc[] =>
-	extraGuides(method).map((guide) => ({
-		title: guideTitles[guide],
-		href: `/guides/${guide}/`,
-	}));
+	extraGuides(method).map((guide) => extras[guide]);
 
 export const RemoteAccessQuiz = () => (
 	<QuizRunner

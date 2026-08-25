@@ -2,9 +2,7 @@ import { useState } from "react";
 import {
 	applyAnswer,
 	blockers,
-	confirm,
 	dropStep,
-	impediments,
 	liveAnswers,
 	nextQuestion,
 	reconsider,
@@ -72,43 +70,6 @@ const StepRow = <O extends Option>({ step }: { step: Step<O> }) => (
 			<strong>{step.label}</strong>
 		</span>
 	</>
-);
-
-type ConfirmProps<O extends Option> = {
-	stoppers: readonly Step<O>[];
-	onStopper: (refused: Step<O>) => void;
-	onNone: () => void;
-};
-
-/**
- * The last question, and the only one the pool cannot pose: what is about to be
- * recommended carries these, and any one of them would make it unusable.
- */
-const Confirm = <O extends Option>({
-	stoppers,
-	onStopper,
-	onNone,
-}: ConfirmProps<O>) => (
-	<section>
-		<h2 className="quiz-title">Would any of these stop you?</h2>
-		<p className="quiz-note">
-			What we are about to suggest comes with them. Say so and we look again.
-		</p>
-		<ul className="quiz-answers">
-			{stoppers.map((stopper) => (
-				<li key={stopper.label}>
-					<button type="button" onClick={() => onStopper(stopper)}>
-						{stopper.label}
-					</button>
-				</li>
-			))}
-			<li>
-				<button className="quiz-cta" type="button" onClick={onNone}>
-					None of these
-				</button>
-			</li>
-		</ul>
-	</section>
 );
 
 type ResultProps<O extends Option> = {
@@ -248,10 +209,6 @@ export const QuizRunner = <O extends Option>({
 	const question = nextQuestion(quiz, state);
 	const outcome = resolve(quiz, state);
 	const left = state.pool.length;
-	const stoppers =
-		outcome.status === "resolved" && !state.confirmed
-			? impediments(quiz, state, traits?.(outcome.option) ?? [])
-			: [];
 	const stuck =
 		outcome.status === "over-constrained"
 			? [...blockers(quiz, state)].sort((a, b) => givesFirst(a) - givesFirst(b))
@@ -284,25 +241,16 @@ export const QuizRunner = <O extends Option>({
 				</section>
 			)}
 
-			{outcome.status === "resolved" &&
-				(stoppers.length > 0 ? (
-					<Confirm
-						stoppers={stoppers}
-						onStopper={(refused) => setState(reconsider(quiz, state, refused))}
-						onNone={() => setState(confirm(state))}
-					/>
-				) : (
-					<Result
-						option={outcome.option}
-						alternatives={outcome.alternatives}
-						doc={doc}
-						guides={guides}
-						traits={traits}
-						onDealbreaker={(refused) =>
-							setState(reconsider(quiz, state, refused))
-						}
-					/>
-				))}
+			{outcome.status === "resolved" && (
+				<Result
+					option={outcome.option}
+					alternatives={outcome.alternatives}
+					doc={doc}
+					guides={guides}
+					traits={traits}
+					onDealbreaker={(refused) => setState(reconsider(quiz, state, refused))}
+				/>
+			)}
 
 			{outcome.status === "over-constrained" && (
 				<section>

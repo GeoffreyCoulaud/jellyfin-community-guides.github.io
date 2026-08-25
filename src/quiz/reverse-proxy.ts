@@ -1,21 +1,21 @@
 import {
-	blocking,
-	con,
-	either,
+	describe,
 	keepAll,
-	pro,
+	type Axis,
 	type Question,
 	type Quiz,
-	type Trait,
 } from "./engine";
 
+/** A password of its own, a login page it delegates to, or nothing at all. */
+type Authentication = "sso" | "password" | "none";
+
 /**
- * Only worth running when the resolved remote access method does not serve the
- * services over HTTPS itself, see its handlesTlsForPublicServices property.
+ * Only worth running when the resolved remote access method serves no HTTPS of
+ * its own, which is what earns it the "reverse-proxy" guide over there.
  */
 export type ReverseProxy = {
 	slug: string;
-	/** Which tool it is, for people who already run one of them. */
+	/** Which tool it is, for people who already know one of them. */
 	family: "caddy" | "traefik" | "nginx" | "tailscale" | "zoraxy";
 	/**
 	 * The ways the proxy can be told about a service, each a capability and never
@@ -33,6 +33,14 @@ export type ReverseProxy = {
 	/** No bandwidth cap or terms of service getting in the way of video. */
 	isHighBandwidthFriendly: boolean;
 	needsDomain: boolean;
+	/**
+	 * Gets a certificate by proving the name in DNS, the only challenge open to a
+	 * service the internet cannot reach. Caddy has the providers as modules to
+	 * compile in, and the nginx ACME module answers over HTTP only.
+	 */
+	hasDnsChallenge: boolean;
+	/** How far it goes in front of a service, before the request reaches it. */
+	authentication: Authentication;
 	/**
 	 * Serves one machine name on three ports, so a second service goes on a path
 	 * rather than an address of its own.
@@ -56,6 +64,8 @@ const reverseProxies = [
 		needsDocker: false,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
+		hasDnsChallenge: false,
+		authentication: "sso",
 		servesOneAddress: false,
 	},
 	{
@@ -69,6 +79,8 @@ const reverseProxies = [
 		needsDocker: false,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
+		hasDnsChallenge: true,
+		authentication: "sso",
 		servesOneAddress: false,
 	},
 	{
@@ -82,6 +94,8 @@ const reverseProxies = [
 		needsDocker: true,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
+		hasDnsChallenge: false,
+		authentication: "sso",
 		servesOneAddress: false,
 	},
 	{
@@ -95,6 +109,8 @@ const reverseProxies = [
 		needsDocker: true,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
+		hasDnsChallenge: true,
+		authentication: "password",
 		servesOneAddress: false,
 	},
 	{
@@ -110,6 +126,8 @@ const reverseProxies = [
 		needsDocker: false,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
+		hasDnsChallenge: true,
+		authentication: "sso",
 		servesOneAddress: false,
 	},
 	{
@@ -125,6 +143,8 @@ const reverseProxies = [
 		needsDocker: false,
 		isHighBandwidthFriendly: true,
 		needsDomain: true,
+		hasDnsChallenge: false,
+		authentication: "sso",
 		servesOneAddress: false,
 	},
 	{
@@ -138,22 +158,104 @@ const reverseProxies = [
 		needsDocker: false,
 		isHighBandwidthFriendly: false,
 		needsDomain: false,
+		hasDnsChallenge: false,
+		authentication: "none",
 		servesOneAddress: true,
 	},
 ] as const satisfies readonly ReverseProxy[];
 
 export type ReverseProxySlug = (typeof reverseProxies)[number]["slug"];
 
+/**
+ * What the proxy is like, whatever the quiz happened to ask, so the result reads
+ * as a description rather than a summary of the answers.
+ */
+const axes: readonly Axis<ReverseProxy>[] = [
+	{
+		holds: (one) => one.isHighBandwidthFriendly,
+		pro: "Streams video without complaint",
+		con: "Streaming video goes against its terms",
+	},
+	{
+		holds: (one) => !one.isDependentOnThirdParty,
+		pro: "Traffic goes straight from your server",
+		con: "Your traffic goes through a company's servers",
+	},
+	{
+		holds: (one) => !one.needsDomain,
+		pro: "No domain to buy",
+		con: "A domain name of your own",
+	},
+	{
+		// HTTP-01 needs the name to answer on the open internet, which a service
+		// behind a VPN never does
+		applies: (one) => one.needsDomain,
+		holds: (one) => one.hasDnsChallenge,
+		pro: "A DNS challenge, so even an unpublished service gets HTTPS",
+		con: "No DNS challenge: HTTPS only for what the internet can reach",
+	},
+	{
+		// Funnel publishes, full stop: there is no gate to put in front of it
+		applies: (one) => one.authentication !== "none",
+		holds: (one) => one.authentication === "sso",
+		pro: "One login in front of every service, with Authelia or the like",
+		con: "A password per service, and no single login for all of them",
+	},
+	{
+		// Not open to everyone, the service still has its own accounts: the con is
+		// that they are the only gate, and few services treat that as their job
+		holds: (one) => one.authentication !== "none",
+		con: "Nothing in front: each service is left to guard itself",
+	},
+	{
+		holds: (one) => one.hasWebInterface,
+		pro: "Services are added in a web interface",
+	},
+	{
+		// A web interface is not the better way of the two, only the other one:
+		// what a file and a label have over it is being text of yours
+		applies: (one) => one.hasWebInterface,
+		holds: (one) => one.hasConfigFile || one.readsContainerLabels,
+		con: "Its routes live in a store of its own, nothing to keep in git",
+	},
+	{
+		holds: (one) => one.hasConfigFile,
+		pro: "Services are added in a config file, which you can version",
+	},
+	{
+		holds: (one) => one.readsContainerLabels,
+		pro: "A container carries its own route, next to the service itself",
+	},
+	{
+		holds: (one) => !one.needsDocker,
+		con: "Only runs in Docker",
+	},
+	{
+		holds: (one) => one.isSetUpWithACommand,
+		pro: "One command per service, nothing to edit",
+	},
+	{
+		holds: (one) => !one.servesOneAddress,
+		con: "Services share one address, on a path",
+	},
+];
+
+export const traits = (proxy: ReverseProxy) => describe(proxy, axes);
+
 const questions = [
 	{
 		id: "already-used",
 		kind: "fact",
-		question: "Do you already use one of these?",
+		// Knowing one is what counts, not running one today: the syntax and the
+		// habits are what carry over. Every family needs an answer of its own.
+		question: "Do you already know one of these?",
 		answers: [
-			{ label: "None of them", keep: keepAll },
+			{ label: "None, or I'd rather start fresh", keep: keepAll },
 			{ label: "Caddy", keep: (p) => p.family === "caddy" },
 			{ label: "Traefik", keep: (p) => p.family === "traefik" },
 			{ label: "Nginx", keep: (p) => p.family === "nginx" },
+			{ label: "Zoraxy", keep: (p) => p.family === "zoraxy" },
+			{ label: "Tailscale", keep: (p) => p.family === "tailscale" },
 		],
 	},
 	{
@@ -181,25 +283,27 @@ const questions = [
 	{
 		id: "third-party",
 		kind: "preference",
-		question: "Should your traffic go through a company's servers?",
+		question: "Where should your traffic go?",
 		answers: [
 			{
-				label: "Yes, one less thing to run",
+				label: "Through a company's servers, one less thing to run",
 				keep: (p) => p.isDependentOnThirdParty,
 			},
 			{
-				label: "No, straight from my server",
+				label: "Straight from my server to my users",
 				keep: (p) => !p.isDependentOnThirdParty,
 			},
+			{ label: "I don't mind", keep: keepAll },
 		],
 	},
 	{
 		id: "own-domain",
 		kind: "preference",
-		question: "Do you want your own domain name?",
+		question: "What address should your services answer on?",
 		answers: [
-			{ label: "Yes, my own", keep: (p) => p.needsDomain },
-			{ label: "No, whatever address I am given", keep: (p) => !p.needsDomain },
+			{ label: "A domain name of my own", keep: (p) => p.needsDomain },
+			{ label: "Whatever address I am given", keep: (p) => !p.needsDomain },
+			{ label: "I don't mind", keep: keepAll },
 		],
 	},
 	{
@@ -214,6 +318,7 @@ const questions = [
 				keep: (p) => p.readsContainerLabels,
 			},
 			{ label: "With one command", keep: (p) => p.isSetUpWithACommand },
+			{ label: "I don't mind", keep: keepAll },
 		],
 	},
 ] as const satisfies readonly Question<ReverseProxy>[];
@@ -221,58 +326,6 @@ const questions = [
 export const reverseProxyQuiz: Quiz<ReverseProxy> = {
 	options: reverseProxies,
 	questions,
-};
-
-/**
- * What the proxy is like, whatever the quiz happened to ask. Every con names the
- * predicate it was read from, which the dealbreaker button filters on.
- */
-export const traits = (proxy: ReverseProxy): Trait<ReverseProxy>[] => {
-	const list: Trait<ReverseProxy>[] = [
-		blocking(
-			either(
-				proxy,
-				(one) => one.isHighBandwidthFriendly,
-				"Streams video without complaint",
-				"Streaming video goes against its terms",
-			),
-		),
-		either(
-			proxy,
-			(one) => !one.isDependentOnThirdParty,
-			"Traffic goes straight from your server",
-			"Your traffic goes through a company's servers",
-		),
-		either(
-			proxy,
-			(one) => !one.needsDomain,
-			"No domain to buy",
-			"A domain name of your own",
-		),
-	];
-
-	if (proxy.hasWebInterface)
-		list.push(pro("Services are added in a web interface"));
-	if (proxy.hasConfigFile)
-		list.push(
-			con("Services are added in a config file", (one) => one.hasWebInterface),
-		);
-	if (proxy.readsContainerLabels)
-		list.push(pro("Containers can declare their own routes"));
-	if (proxy.needsDocker)
-		list.push(blocking(con("Only runs in Docker", (one) => !one.needsDocker)));
-	if (proxy.isSetUpWithACommand)
-		list.push(pro("One command per service, nothing to edit"));
-
-	if (proxy.servesOneAddress)
-		list.push(
-			con(
-				"Services share one address, on a path",
-				(one) => !one.servesOneAddress,
-			),
-		);
-
-	return list;
 };
 
 /**

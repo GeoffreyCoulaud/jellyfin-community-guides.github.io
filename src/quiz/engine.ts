@@ -56,59 +56,61 @@ export type Step<O extends Option> = {
 };
 
 /**
- * A plain fact about one option, pro or con, written without knowing what the
- * user answered. A con keeps the predicate it was read from, so calling it a
- * dealbreaker needs no question worded as its refusal.
+ * A plain fact about one option, pro or con, read off an `Axis` without knowing
+ * what the user answered. A con keeps the predicate its axis tested, so calling
+ * it a dealbreaker needs no question worded as its refusal.
  */
 export type Trait<O extends Option> = {
 	label: string;
 	tone: "pro" | "con";
 	/** Options left standing once this con is a dealbreaker. */
 	keep?: (option: O) => boolean;
-	/**
-	 * Stops someone using the option at all, rather than merely costing them
-	 * something. Only these are put to the user before a recommendation; the rest
-	 * stay on the card, refusable all the same.
-	 */
-	blocks?: boolean;
 };
 
 export type QuizState<O extends Option> = {
 	pool: readonly O[];
 	steps: readonly Step<O>[];
-	/**
-	 * The impediments were shown and waved through. Never carried over: any step
-	 * builds a fresh state, so the next candidate is confirmed on its own terms.
-	 */
-	confirmed?: boolean;
 };
 
 export const keepAll = () => true;
 
-export const pro = <O extends Option>(label: string): Trait<O> => ({
-	label,
-	tone: "pro",
-});
-
-export const con = <O extends Option>(
-	label: string,
-	keep?: (option: O) => boolean,
-): Trait<O> => (keep ? { label, tone: "con", keep } : { label, tone: "con" });
-
-/** A con that stops someone using the option, not one that costs them. */
-export const blocking = <O extends Option>(trait: Trait<O>): Trait<O> =>
-	trait.tone === "con" ? { ...trait, blocks: true } : trait;
+/** A label reading off the option, for the ones carrying a number of their own. */
+type Side<O extends Option> = string | ((option: O) => string);
 
 /**
- * One axis, two faces: refusing the downside is nothing but asking for the
- * options where the predicate holds.
+ * One property of the options, and what it is worth saying about the one being
+ * recommended. `holds` picks the side: `pro` when the property holds of that
+ * option, `con` when it does not. Refusing that con is asking for the options
+ * where it does hold, so `holds` is the way out of the con as much as its test.
+ * Leaving a side out says nothing, which is how a property only worth a word one
+ * way round is written.
  */
-export const either = <O extends Option>(
+export type Axis<O extends Option> = {
+	/** Worth a word at all: an axis with nothing to say is left out of the list. */
+	applies?: (option: O) => boolean;
+	holds: (option: O) => boolean;
+	pro?: Side<O>;
+	con?: Side<O>;
+};
+
+const say = <O extends Option>(side: Side<O>, option: O) =>
+	typeof side === "string" ? side : side(option);
+
+/** Reads every axis against one option, the silent sides dropping out. */
+export const describe = <O extends Option>(
 	option: O,
-	holds: (option: O) => boolean,
-	upside: string,
-	downside: string,
-): Trait<O> => (holds(option) ? pro(upside) : con(downside, holds));
+	axes: readonly Axis<O>[],
+): Trait<O>[] =>
+	axes.flatMap((axis): Trait<O>[] => {
+		if (axis.applies !== undefined && !axis.applies(option)) return [];
+		const holds = axis.holds(option);
+		const side = holds ? axis.pro : axis.con;
+		if (side === undefined) return [];
+		const label = say(side, option);
+		return holds
+			? [{ label, tone: "pro" }]
+			: [{ label, tone: "con", keep: axis.holds }];
+	});
 
 const outcomes = <O extends Option>(
 	question: Question<O>,
@@ -146,8 +148,9 @@ const wasAsked = <O extends Option>(state: QuizState<O>, id: string) =>
 
 /**
  * The greedy pick: prunes the most in the worst case, declaration order breaks
- * ties, `asksFirst` jumps the queue. No tier puts facts first: what a question
- * fails to catch, `impediments` catches.
+ * ties, `asksFirst` jumps the queue. No tier puts facts first: a question earns
+ * its place by separating options, and what it never asks about is on the card
+ * as a con, with a Dealbreaker button on it.
  */
 export const nextQuestion = <O extends Option>(
 	quiz: Quiz<O>,
@@ -201,38 +204,6 @@ export const resolve = <O extends Option>(
 	if (first === undefined) return { status: "over-constrained" } as const;
 	return { status: "resolved", option: first, alternatives } as const;
 };
-
-/**
- * What could stop someone using this option, ready to be put to them as a
- * question before it is recommended. A con that merely costs something is not
- * in here: it stays on the card, where its Dealbreaker button still refuses it.
- */
-export const impediments = <O extends Option>(
-	quiz: Quiz<O>,
-	state: QuizState<O>,
-	traits: readonly Trait<O>[],
-) =>
-	traits.flatMap((trait) => {
-		const keep = trait.keep;
-		if (trait.tone !== "con" || trait.blocks !== true || keep === undefined)
-			return [];
-		const settled = state.steps.some(
-			(step) =>
-				// The axis was put to them, whichever way they answered it
-				step.question?.answers.some((answer) =>
-					quiz.options.every((option) => answer.keep(option) === keep(option)),
-				) ||
-				// Or what they picked implies it: everything it kept carries this con
-				quiz.options.filter(step.keep).every((option) => !keep(option)),
-		);
-		return settled ? [] : [{ label: trait.label, keep }];
-	});
-
-/** Waved through: the impediments were shown and none of them applied. */
-export const confirm = <O extends Option>(state: QuizState<O>): QuizState<O> => ({
-	...state,
-	confirmed: true,
-});
 
 /** Steps only ever narrow the pool, so dropping one means replaying them all. */
 const replay = <O extends Option>(

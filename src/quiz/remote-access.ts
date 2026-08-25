@@ -1,12 +1,9 @@
 import {
-	blocking,
-	con,
-	either,
+	describe,
 	keepAll,
-	pro,
+	type Axis,
 	type Question,
 	type Quiz,
-	type Trait,
 } from "./engine";
 
 type Money = { amount: number; currency: "EUR" | "USD" };
@@ -76,7 +73,7 @@ export type Method = {
 	 * on: a DNS zone gets any method there, so it earns a guide, not a bad mark.
 	 */
 	hasBuiltInNameResolution: boolean;
-	/** Users, devices and routes are managed in a browser, not on a terminal. */
+	/** Users, devices and routes are managed in a browser, from anywhere. */
 	hasWebInterface: boolean;
 	/**
 	 * How far the client gets onto a box people watch on. Never read on its own:
@@ -445,29 +442,19 @@ const worksWithoutPublicIpv6 = (method: Method) =>
 /**
  * Public or private, the point is having no reverse proxy to pick and run. An
  * or, not an and: serving both kinds is a capability, not a commitment, so a
- * tool is not marked down for the half its user may never set up.
+ * tool is not marked down for the half its user may never set up. Which half it
+ * covers is on the card, one axis each.
  */
 const handlesTlsItself = (method: Method) =>
 	method.handlesTlsForPublicServices || method.handlesTlsForPrivateServices;
 
+/** A half it serves and puts no HTTPS on: something else has to. */
+const needsAReverseProxy = (method: Method) =>
+	(method.servesPublicServices && !method.handlesTlsForPublicServices) ||
+	(method.servesPrivateServices && !method.handlesTlsForPrivateServices);
+
 /** Nothing to install, so any box with a Jellyfin app or a browser gets there. */
 const worksOnAnyTv = (method: Method) => method.servesPublicServices;
-
-/** One line per box people watch on: the three stores differ. */
-const tvTrait = (
-	device: string,
-	method: Method,
-	client: (one: Method) => TvClient,
-): Trait<Method> => {
-	const installs = (one: Method) =>
-		worksOnAnyTv(one) || client(one) === "official";
-	const worksOn = (one: Method) => worksOnAnyTv(one) || client(one) !== "none";
-	if (client(method) === "official")
-		return pro(`${device} installs it from the store`);
-	if (client(method) === "sideload")
-		return con(`${device} needs its app sideloaded`, installs);
-	return blocking(con(`${device} cannot install it`, worksOn));
-};
 
 /** Clients aim at your home address, which your ISP can change under you. */
 const isReachedAtHome = (method: Method) =>
@@ -484,6 +471,143 @@ const entryPoint = (method: Method) =>
 		: method.needsYourOwnRemoteMachine
 			? "rented"
 			: "hosted";
+
+const money = ({ amount, currency }: Money) => `${amount} ${currency}`;
+
+/** The whole bill, flat fee included: a per seat price on its own hides it. */
+const monthlyBill = (price: Price | null) => {
+	if (price === null) return "Free";
+	const seat = `${money(price.perSeat)} per ${price.perSeat.per}`;
+	if (price.fixed === undefined) return `${seat}, every month`;
+	const covered = `${price.seatsIncluded} ${price.perSeat.per}s`;
+	return `${money(price.fixed)} a month for ${covered}, then ${seat}`;
+};
+
+/**
+ * Two axes per box people watch on: whether it can run the client at all, then
+ * which store it comes from. Both keep quiet about a method that publishes a
+ * public address, there being no client to install in the first place.
+ */
+const tvAxes = (
+	device: string,
+	client: (one: Method) => TvClient,
+): Axis<Method>[] => [
+	{
+		applies: (one) => !worksOnAnyTv(one),
+		holds: (one) => worksOnAnyTv(one) || client(one) !== "none",
+		con: `${device} cannot install it`,
+	},
+	{
+		applies: (one) => !worksOnAnyTv(one) && client(one) !== "none",
+		holds: (one) => worksOnAnyTv(one) || client(one) === "official",
+		pro: `${device} installs it from the store`,
+		con: `${device} needs its app sideloaded`,
+	},
+];
+
+/**
+ * What the method is like, written without knowing what the user answered, so
+ * the result reads as a description rather than a summary of the quiz.
+ */
+const axes: readonly Axis<Method>[] = [
+	{
+		holds: (one) => one.price === null,
+		pro: "Free",
+		con: (one) => monthlyBill(one.price),
+	},
+	{
+		holds: (one) => one.maxUsers === null,
+		con: (one) => `Up to ${one.maxUsers} people`,
+	},
+	{
+		holds: (one) => one.maxDevices === null,
+		con: (one) => `Up to ${one.maxDevices} devices`,
+	},
+	{
+		holds: (one) => one.isHighBandwidthFriendly,
+		pro: "Streams video without complaint",
+		con: "Streaming video goes against its terms",
+	},
+	{
+		// The IPv6 one hears nothing here: the axis below is its line
+		applies: (one) => one.homeNetworkRequirement !== "public-ipv6",
+		holds: worksWithoutForwardedPort,
+		pro: "Nothing to open on your router",
+		con: "A port to open on your router",
+	},
+	{
+		holds: worksWithoutPublicIpv6,
+		con: "Every user needs public IPv6",
+	},
+	{
+		holds: (one) => one.servesPublicServices,
+		pro: "A link is enough, nothing to install",
+		con: "Every user installs a client",
+	},
+	{
+		holds: (one) => one.servesPrivateServices,
+		pro: "Can stay off the open internet",
+		con: "Whatever you publish faces the internet",
+	},
+	{
+		// One axis per half, since a method can cover one and not the other:
+		// Pangolin CE puts HTTPS on what it publishes and none on the rest
+		applies: (one) => one.servesPublicServices,
+		holds: (one) => !one.servesPublicServices || one.handlesTlsForPublicServices,
+		pro: "HTTPS on what you publish",
+		con: "A reverse proxy to add for HTTPS on what you publish",
+	},
+	{
+		applies: (one) => one.servesPrivateServices,
+		holds: (one) =>
+			!one.servesPrivateServices || one.handlesTlsForPrivateServices,
+		pro: "HTTPS on what stays private",
+		con: "A reverse proxy to add for HTTPS on what stays private",
+	},
+	{
+		holds: (one) => !one.isDependentOnThirdParty,
+		pro: "Nobody else in the loop",
+		con: "Leans on a service you do not run",
+	},
+	{
+		holds: (one) => !one.hasProprietaryComponent,
+		pro: "Open source all the way",
+		con: "A closed source piece",
+	},
+	{
+		holds: (one) => one.hasBuiltInNameResolution,
+		pro: "Machines answer to a name",
+		con: "Names take a DNS zone of your own",
+	},
+	...tvAxes("An Apple TV", (one) => one.appleTv),
+	...tvAxes("An Android TV", (one) => one.androidTv),
+	...tvAxes("A Fire TV", (one) => one.fireTv),
+	{
+		holds: (one) => !one.needsYourOwnRemoteMachine,
+		con: "A server to rent and keep running",
+	},
+	{
+		holds: (one) => !one.reachesEveryLocalService,
+		con: "Opens the whole home network by default",
+	},
+	{
+		// Nothing installed of its own means nothing to administer either
+		applies: (one) => one.setupSteps.length > 0,
+		holds: (one) => one.hasWebInterface,
+		pro: "Managed from a web interface",
+		con: "Managed by logging in to the server",
+	},
+	{
+		holds: (one) => one.setupSteps.length <= 1,
+		pro: (one) =>
+			one.setupSteps.length === 0
+				? "Nothing of its own to install"
+				: "One thing to install",
+		con: "Several pieces to set up",
+	},
+];
+
+export const traits = (method: Method) => describe(method, axes);
 
 const servesUsers = (users: number) => (method: Method) =>
 	method.maxUsers === null || method.maxUsers >= users;
@@ -529,11 +653,11 @@ const questions = [
 		id: "how-many-users",
 		kind: "fact",
 		question: "How many people will you serve, including yourself?",
-		help: "Pick the lower answer if you are unsure.",
 		answers: [
 			{ label: "Up to 5", keep: servesUsers(5) },
 			// An open ended count only fits a plan with no cap at all
 			{ label: "More than 5", keep: (m) => m.maxUsers === null },
+			{ label: "I don't know", keep: servesUsers(5) },
 		],
 	},
 	{
@@ -545,6 +669,7 @@ const questions = [
 			{ label: "Up to 10", keep: servesDevices(10) },
 			{ label: "11 to 100", keep: servesDevices(100) },
 			{ label: "More than 100", keep: servesDevices(101) },
+			{ label: "I don't know", keep: servesDevices(10) },
 		],
 	},
 	{
@@ -630,6 +755,7 @@ const questions = [
 				label: "With a web address, nothing to install",
 				keep: (m) => m.servesPublicServices,
 			},
+			{ label: "I don't mind", keep: keepAll },
 		],
 	},
 	{
@@ -644,6 +770,7 @@ const questions = [
 				keep: (m) => entryPoint(m) === "rented",
 			},
 			{ label: "On a hosted service", keep: (m) => entryPoint(m) === "hosted" },
+			{ label: "I don't mind", keep: keepAll },
 		],
 	},
 	{
@@ -663,12 +790,11 @@ const questions = [
 		id: "web-interface",
 		kind: "preference",
 		question: "How do you want to manage remote access?",
+		help: "A web interface adds users, devices and routes from any browser, on any of your machines. Without one, you log in to the server itself to do it there, in a file or with a command depending on the tool.",
 		answers: [
 			{ label: "In a web interface", keep: (m) => m.hasWebInterface },
-			{
-				label: "In config files, on the command line",
-				keep: (m) => !m.hasWebInterface,
-			},
+			{ label: "By logging in to the server", keep: (m) => !m.hasWebInterface },
+			{ label: "I don't mind", keep: keepAll },
 		],
 	},
 ] as const satisfies readonly Question<Method>[];
@@ -683,164 +809,21 @@ export const remoteAccessQuiz: Quiz<Method> = {
 	worseThan,
 };
 
-const money = ({ amount, currency }: Money) => `${amount} ${currency}`;
-
-/** The whole bill, so a flat fee is never left out of it. */
-const monthlyBill = (price: Price) => {
-	const seat = `${money(price.perSeat)} per ${price.perSeat.per}`;
-	if (price.fixed === undefined) return `${seat}, every month`;
-	const covered = `${price.seatsIncluded} ${price.perSeat.per}s`;
-	return `${money(price.fixed)} a month for ${covered}, then ${seat}`;
-};
-
-/**
- * What the method is like, written without knowing what the user answered, so
- * the result reads as a description rather than a summary of the quiz. A con
- * without a predicate is one no other option fixes: see `extraGuides`.
- */
-export const traits = (method: Method): Trait<Method>[] => {
-	const list: Trait<Method>[] = [];
-
-	if (method.price === null) list.push(pro("Free"));
-	else list.push(con(monthlyBill(method.price), (one) => one.price === null));
-
-	if (method.maxUsers !== null)
-		list.push(
-			blocking(
-				con(`Up to ${method.maxUsers} people`, (one) => one.maxUsers === null),
-			),
-		);
-
-	if (method.maxDevices !== null)
-		list.push(
-			blocking(
-				con(`Up to ${method.maxDevices} devices`, (one) => one.maxDevices === null),
-			),
-		);
-
-	list.push(
-		blocking(
-			either(
-				method,
-				(one) => one.isHighBandwidthFriendly,
-				"Streams video without complaint",
-				"Streaming video goes against its terms",
-			),
-		),
-	);
-
-	if (method.homeNetworkRequirement === "nothing")
-		list.push(pro("Nothing to open on your router"));
-	if (method.homeNetworkRequirement === "forwarded-port")
-		list.push(
-			blocking(con("A port to open on your router", worksWithoutForwardedPort)),
-		);
-	if (method.homeNetworkRequirement === "public-ipv6")
-		list.push(
-			blocking(con("Every user needs public IPv6", worksWithoutPublicIpv6)),
-		);
-
-	list.push(
-		blocking(
-			either(
-				method,
-				(one) => one.servesPublicServices,
-				"A link is enough, nothing to install",
-				"Every user installs a client",
-			),
-		),
-		either(
-			method,
-			(one) => one.servesPrivateServices,
-			"Can stay off the open internet",
-			"Whatever you publish faces the internet",
-		),
-		either(
-			method,
-			handlesTlsItself,
-			"HTTPS handled for you",
-			"A reverse proxy to add for HTTPS",
-		),
-		either(
-			method,
-			(one) => !one.isDependentOnThirdParty,
-			"Nobody else in the loop",
-			"Leans on a service you do not run",
-		),
-		either(
-			method,
-			(one) => !one.hasProprietaryComponent,
-			"Open source all the way",
-			"A closed source piece",
-		),
-		either(
-			method,
-			(one) => one.hasBuiltInNameResolution,
-			"Machines answer to a name",
-			"Names take a DNS zone of your own",
-		),
-	);
-
-	// Only worth saying when there is a client to get onto the box at all
-	if (!method.servesPublicServices)
-		list.push(
-			tvTrait("An Apple TV", method, (one) => one.appleTv),
-			tvTrait("An Android TV", method, (one) => one.androidTv),
-			tvTrait("A Fire TV", method, (one) => one.fireTv),
-		);
-
-	if (method.needsYourOwnRemoteMachine)
-		list.push(
-			blocking(
-				con(
-					"A server to rent and keep running",
-					(one) => !one.needsYourOwnRemoteMachine,
-				),
-			),
-		);
-
-	if (method.reachesEveryLocalService)
-		list.push(
-			con(
-				"Opens the whole home network by default",
-				(one) => !one.reachesEveryLocalService,
-			),
-		);
-
-	// Nothing installed of its own means nothing to administer either
-	if (method.setupSteps.length > 0)
-		list.push(
-			either(
-				method,
-				(one) => one.hasWebInterface,
-				"Managed from a web interface",
-				"Managed from a terminal",
-			),
-		);
-
-	if (method.setupSteps.length === 0) list.push(pro("Nothing of its own to install"));
-	else if (method.setupSteps.length === 1) list.push(pro("One thing to install"));
-	else
-		list.push(
-			con("Several pieces to set up", (one) => one.setupSteps.length <= 1),
-		);
-
-	return list;
-};
-
 export type ExtraGuide =
+	| "reverse-proxy"
 	| "get-domain"
 	| "dynamic-dns"
 	| "restrict-vpn-access"
 	| "private-dns";
 
 /**
- * The guides that come with the method, for what the quiz deliberately never
- * asks: whether the home address moves, how far into the house the VPN reaches,
- * and how services get their names. None of the three rules an option out, so
- * each earns a page instead of a question.
+ * What is left to set up once the method is picked. HTTPS is the one the quiz
+ * does ask about, since it tells options apart; the rest it never asks, whether
+ * the home address moves, how far into the house the VPN reaches and how
+ * services get their names ruling no option out. Each earns a page instead.
  */
 export const extraGuides = (method: Method): ExtraGuide[] => [
+	...(needsAReverseProxy(method) ? (["reverse-proxy"] as const) : []),
 	...(method.needsDomain ? (["get-domain"] as const) : []),
 	...(isReachedAtHome(method) ? (["dynamic-dns"] as const) : []),
 	...(method.reachesEveryLocalService ? (["restrict-vpn-access"] as const) : []),
