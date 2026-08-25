@@ -5,6 +5,7 @@ import {
 	keepAll,
 	liveAnswers,
 	nextQuestion,
+	questionsLeft,
 	startQuiz,
 	type Option,
 	type Quiz,
@@ -156,6 +157,72 @@ describe("nextQuestion", () => {
 		// then there is nobody left to ask about
 		expect(pool(state)).toEqual([]);
 		expect(asked(quiz, state)).toBeUndefined();
+	});
+});
+
+describe("questionsLeft", () => {
+	it("counts every question still worth asking", () => {
+		// given a quiz nobody has answered
+		const quiz = quizOf(options, [temperature, sweetness]);
+
+		// when what is left to ask is counted
+		// then both questions are ahead
+		expect(questionsLeft(quiz, startQuiz(quiz))).toBe(2);
+	});
+
+	it("stops counting a question once it has been answered", () => {
+		// given a quiz answered once
+		const quiz = quizOf(options, [temperature, sweetness]);
+		const state = answered(quiz, ["temperature", "hot"]);
+
+		// when what is left to ask is counted
+		// then only the unanswered one is ahead
+		expect(questionsLeft(quiz, state)).toBe(1);
+	});
+
+	it("falls for an answer that ruled nothing out", () => {
+		// given the way out of a question, taken
+		const quiz = quizOf(options, [openEnded, sweetness]);
+		const state = answered(quiz, ["temperature", "either"]);
+
+		// when what is left to ask is counted
+		// then it fell, though the pool did not: answering is progress too
+		expect(pool(state)).toEqual(["a", "b", "c", "d"]);
+		expect(questionsLeft(quiz, state)).toBe(1);
+	});
+
+	it("leaves out a question the options left all answer alike", () => {
+		// given a pool where nobody is served cold
+		const quiz = quizOf(options, [half, temperature]);
+		const state = answered(quiz, ["half", "early"]);
+
+		// when what is left to ask is counted
+		// then nothing is: which is why the count is a ceiling, not a promise
+		expect(questionsLeft(quiz, state)).toBe(0);
+	});
+
+	it("counts nothing once one option is left", () => {
+		// given a pool down to one
+		const quiz = quizOf(options, [rarity, temperature, sweetness]);
+		const state = answered(quiz, ["rarity", "rare"]);
+
+		// when what is left to ask is counted
+		// then there is nothing left to tell apart
+		expect(questionsLeft(quiz, state)).toBe(0);
+	});
+
+	it("counts nothing once the answers have ruled everything out", () => {
+		// given two answers no option satisfies at once
+		const quiz = quizOf(options, [temperature, rarity, sweetness]);
+		const state = answered(
+			quiz,
+			["temperature", "cold"],
+			["rarity", "rare"],
+		);
+
+		// when what is left to ask is counted
+		// then there is nobody left to ask about
+		expect(questionsLeft(quiz, state)).toBe(0);
 	});
 });
 

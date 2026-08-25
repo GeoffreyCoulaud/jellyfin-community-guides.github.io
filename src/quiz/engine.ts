@@ -201,6 +201,15 @@ const replay = <O extends Option>(
 
 export const startQuiz = <O extends Option>(quiz: Quiz<O>) => replay(quiz, []);
 
+/** Unasked, and still telling the pool apart: what there is left to ask. */
+const askable = <O extends Option>(quiz: Quiz<O>, state: QuizState<O>) =>
+	state.pool.length <= 1
+		? []
+		: quiz.questions.filter(
+				(q) =>
+					!wasAsked(state.steps, q.id) && splitsPool(q, state.pool),
+			);
+
 /**
  * The greedy pick: prunes the most in the worst case, declaration order breaks
  * ties, `asksFirst` jumps the queue. No tier puts facts first: a question earns
@@ -210,19 +219,24 @@ export const startQuiz = <O extends Option>(quiz: Quiz<O>) => replay(quiz, []);
 export const nextQuestion = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
-) => {
-	if (state.pool.length <= 1) return undefined;
-	return quiz.questions
-		.filter(
-			(q) => !wasAsked(state.steps, q.id) && splitsPool(q, state.pool),
-		)
+) =>
+	askable(quiz, state)
 		.sort(
 			(a, b) =>
 				Number(b.asksFirst ?? false) - Number(a.asksFirst ?? false) ||
 				worstCase(a, state.pool) - worstCase(b, state.pool),
 		)
 		.at(0);
-};
+
+/**
+ * How many questions are still worth asking, which is a ceiling rather than a
+ * count: an answer can settle a question nobody has been asked yet, so what is
+ * left falls by one at least, often by more.
+ */
+export const questionsLeft = <O extends Option>(
+	quiz: Quiz<O>,
+	state: QuizState<O>,
+) => askable(quiz, state).length;
 
 /**
  * Answers still leading somewhere: offering one that empties the pool asks the

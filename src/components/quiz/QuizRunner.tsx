@@ -52,7 +52,7 @@ export const QuizRunner = <O extends Option>({
 			{/* The result names what is left, so the bar has nothing to add to it.
 			    Over-constrained keeps it: nothing is left to name there. */}
 			{outcome.status !== "resolved" && (
-				<Progress options={quiz.options} pool={state.pool} doc={doc} />
+				<Progress quiz={quiz} state={state} doc={doc} />
 			)}
 
 			{question !== undefined && (
