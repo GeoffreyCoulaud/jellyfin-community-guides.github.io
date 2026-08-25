@@ -1,0 +1,16 @@
+# Tabs, shown four wide. Prettier reads this file too, so the CLI and any editor
+# agree without a second copy of the same numbers.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = tab
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Two spaces, because npm and the markdown tooling write them back that way.
+[*.{json,yml,yaml,md,mdx}]
+indent_style = space
+indent_size = 2
