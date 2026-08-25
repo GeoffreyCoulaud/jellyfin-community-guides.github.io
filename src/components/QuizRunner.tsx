@@ -59,6 +59,9 @@ const Badge = ({ children }: { children: string }) => (
 	<span className="quiz-badge">{children}</span>
 );
 
+/** A click ending a drag over the text is someone copying it, not answering. */
+const selecting = () => (window.getSelection()?.toString().length ?? 0) > 0;
+
 /** A page to go and read, behind the icon of whatever it documents. */
 const DocLink = ({ doc }: { doc: Doc }) => (
 	<a href={doc.href}>
@@ -183,31 +186,11 @@ const Result = <O extends Option>({
 
 	return (
 		<section>
+			{/* The name is the link to the guide, so nothing is asked for twice */}
 			<h2 className="quiz-title quiz-result-title">
 				<Emblem emblem={match.emblem} size="title" withPips />
-				{match.title}
+				<a href={match.href}>{match.title}</a>
 			</h2>
-			<p>
-				<a className="quiz-cta" href={match.href}>
-					Read the guide
-				</a>
-			</p>
-
-			{others.length > 0 && (
-				<div className="quiz-block">
-					<h3 className="quiz-heading">Just as good here</h3>
-					<p className="quiz-note">
-						Nothing left to ask tells these apart from {match.title}.
-					</p>
-					<ul className="quiz-links">
-						{others.map((other) => (
-							<li key={`${other.href} ${other.title}`}>
-								<DocLink doc={other} />
-							</li>
-						))}
-					</ul>
-				</div>
-			)}
 
 			{listed.length > 0 && (
 				<div className="quiz-block quiz-columns">
@@ -262,6 +245,22 @@ const Result = <O extends Option>({
 					</ul>
 				</div>
 			)}
+
+			{others.length > 0 && (
+				<div className="quiz-block">
+					<h3 className="quiz-heading">Also left standing</h3>
+					<p className="quiz-note">
+						Nothing left to ask tells these apart from {match.title}.
+					</p>
+					<ul className="quiz-links">
+						{others.map((other) => (
+							<li key={`${other.href} ${other.title}`}>
+								<DocLink doc={other} />
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
 		</section>
 	);
 };
@@ -277,18 +276,24 @@ export const QuizRunner = <O extends Option>({
 	const answer = (question: Question<O>, picked: Answer<O>) =>
 		setState(applyAnswer(quiz, state, question, picked));
 
+	// The row is the click target, the pencil only the keyboard's way in: text
+	// inside a button cannot be selected, which is what bug reports are made of.
 	const recap = (
 		<ol>
 			{state.steps.map((step, index) => (
-				<li key={key(step)}>
+				<li
+					key={key(step)}
+					onClick={() => {
+						if (!selecting()) setState(rewind(quiz, state, index));
+					}}
+				>
+					<StepRow step={step} />
 					<button
 						type="button"
-						onClick={() => setState(rewind(quiz, state, index))}
+						className="quiz-edit"
+						aria-label={`Change: ${step.question?.question ?? step.label}`}
 					>
-						<StepRow step={step} />
-						<span className="quiz-edit" aria-hidden="true">
-							✎
-						</span>
+						✎
 					</button>
 				</li>
 			))}
@@ -304,7 +309,11 @@ export const QuizRunner = <O extends Option>({
 
 	return (
 		<div className="quiz not-content">
-			<Progress options={quiz.options} pool={state.pool} doc={doc} />
+			{/* The result names what is left, so the bar has nothing to add to it.
+			    Over-constrained keeps it: nothing is left to name there. */}
+			{outcome.status !== "resolved" && (
+				<Progress options={quiz.options} pool={state.pool} doc={doc} />
+			)}
 
 			{question !== undefined && (
 				<section>

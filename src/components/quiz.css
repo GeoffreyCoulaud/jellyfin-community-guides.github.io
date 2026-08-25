@@ -91,18 +91,20 @@
 	opacity: 0.45;
 }
 
-/* The emblem leads, the name of the recommendation follows it. */
-.quiz-result-title {
-	display: flex;
-	align-items: center;
-	gap: 0.6rem;
-}
-
 .quiz-title {
 	margin: 0 0 0.75rem;
 	font-size: var(--sl-text-h4);
 	line-height: var(--sl-line-height-headings);
 	color: var(--sl-color-white);
+}
+
+/* The emblem leads, the name of the recommendation follows it. Nothing under it
+   but blocks bringing their own margin, so it keeps none of its own. */
+.quiz-result-title {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin-bottom: 0;
 }
 
 .quiz-heading {
@@ -132,10 +134,6 @@
 
 .quiz-block .quiz-note {
 	margin-bottom: 0.5rem;
-}
-
-.quiz-cta {
-	font-weight: 600;
 }
 
 /* The help text sits right on top of the answers otherwise. */
@@ -282,22 +280,17 @@
 	font-size: var(--sl-text-sm);
 }
 
-.quiz-recap button {
+.quiz-recap li {
 	display: flex;
 	gap: 0.4rem;
 	align-items: baseline;
-	width: 100%;
 	padding: 0.25rem 0.4rem;
-	font: inherit;
-	color: var(--sl-color-gray-2);
-	text-align: left;
-	background: none;
-	border: 0;
 	border-radius: 0.25rem;
+	color: var(--sl-color-gray-2);
 	cursor: pointer;
 }
 
-.quiz-recap button:hover {
+.quiz-recap li:hover {
 	background: var(--sl-color-gray-6);
 	color: var(--sl-color-white);
 }
@@ -306,13 +299,20 @@
 	flex: 1;
 }
 
-/* Only worth showing on the row the pointer is on, one pencil at a time. */
+/* Dim until the row is pointed at, but never gone: a hidden pencil is one no
+   touchscreen ever finds. */
 .quiz-edit {
-	opacity: 0;
-	color: var(--sl-color-text-accent);
+	flex: none;
+	width: auto;
+	padding: 0;
+	font: inherit;
+	color: var(--sl-color-gray-4);
+	background: none;
+	border: 0;
+	cursor: pointer;
 }
 
-.quiz-recap button:hover .quiz-edit,
-.quiz-recap button:focus-visible .quiz-edit {
-	opacity: 1;
+.quiz-recap li:hover .quiz-edit,
+.quiz-edit:focus-visible {
+	color: var(--sl-color-text-accent);
 }
