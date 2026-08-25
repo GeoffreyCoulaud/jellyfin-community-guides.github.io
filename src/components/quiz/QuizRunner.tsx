@@ -14,6 +14,7 @@ import { Asking } from "./Asking";
 import { Progress } from "./Progress";
 import { Recap } from "./Recap";
 import { Result } from "./Result";
+import { Shortlist } from "./Shortlist";
 import { givesFirst } from "./Step";
 import { Stuck } from "./Stuck";
 import { useSharedState } from "./useSharedState";
@@ -28,7 +29,7 @@ type Props<O extends Option> = {
 	doc: (option: O) => Doc;
 	guides?: (option: O) => Doc[];
 	/** What the option is like, pros and cons, whatever the quiz asked. */
-	traits?: (option: O) => Trait<O>[];
+	traits?: (option: O) => readonly Trait<O>[];
 };
 
 export const QuizRunner = <O extends Option>({
@@ -46,14 +47,15 @@ export const QuizRunner = <O extends Option>({
 					(a, b) => givesFirst(a) - givesFirst(b),
 				)
 			: [];
+	// One left or several, the screen below names them all
+	const named =
+		outcome.status === "resolved" || outcome.status === "undecided";
 
 	return (
 		<div className="quiz not-content">
-			{/* The result names what is left, so the bar has nothing to add to it.
-			    Over-constrained keeps it: nothing is left to name there. */}
-			{outcome.status !== "resolved" && (
-				<Progress quiz={quiz} state={state} doc={doc} />
-			)}
+			{/* The screen below names what is left, so the bar has nothing to add
+			    to it. Over-constrained keeps it: nothing is left to name there. */}
+			{!named && <Progress quiz={quiz} state={state} doc={doc} />}
 
 			{question !== undefined && (
 				<Asking
@@ -68,7 +70,18 @@ export const QuizRunner = <O extends Option>({
 			{outcome.status === "resolved" && (
 				<Result
 					option={outcome.option}
-					alternatives={outcome.alternatives}
+					doc={doc}
+					guides={guides}
+					traits={traits}
+					onDealbreaker={(refused) =>
+						setState(reconsider(quiz, state, refused))
+					}
+				/>
+			)}
+
+			{outcome.status === "undecided" && (
+				<Shortlist
+					options={outcome.options}
 					doc={doc}
 					guides={guides}
 					traits={traits}

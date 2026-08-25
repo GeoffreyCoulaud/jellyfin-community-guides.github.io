@@ -98,13 +98,20 @@
 	color: var(--sl-color-white);
 }
 
-/* The emblem leads, the name of the recommendation follows it. Nothing under it
-   but blocks bringing their own margin, so it keeps none of its own. */
-.quiz-result-title {
+/* The emblem leads, the name follows it. Nothing under either but blocks
+   bringing their own margin, so they keep none of their own. */
+.quiz-result-title,
+.quiz-subtitle {
 	display: flex;
 	align-items: center;
 	gap: 0.6rem;
 	margin-bottom: 0;
+}
+
+/* One rung down from a result: one option among several, or a heading over the
+   lot of them. */
+.quiz-subtitle {
+	font-size: var(--sl-text-h5);
 }
 
 .quiz-heading {
@@ -119,26 +126,58 @@
 	margin-top: 1.75rem;
 }
 
-/* Pros and cons face to face, stacked once there is no room for two. */
+/* Pros and cons face to face, stacked once there is no room for two. auto-fit
+   rather than two tracks: a card with only pros on it gets the whole width
+   instead of a column of white space beside it. */
 .quiz-columns {
 	display: grid;
 	gap: 1.5rem;
 	align-items: start;
+	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
 }
 
-@media (min-width: 45rem) {
-	.quiz-columns {
-		grid-template-columns: 1fr 1fr;
-	}
+/* One card per option left standing, all the same, none of them leading. Named
+   under `.quiz` to outrank the list reset at the top of this file. */
+.quiz .quiz-cards {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	margin-top: 1.75rem;
+}
+
+.quiz-card {
+	padding: 1rem;
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.5rem;
+}
+
+/* What holds whichever one you pick, filled rather than outlined: it is not a
+   card among the cards, it is what all of them say. */
+.quiz-shared {
+	padding: 1rem;
+	border-radius: 0.5rem;
+	background: var(--sl-color-gray-6);
+}
+
+/* Under a heading of its own, a block is closer to it than to a page of prose. */
+.quiz-card .quiz-block,
+.quiz-card > .quiz-note,
+.quiz-block > .quiz-block {
+	margin-top: 0.75rem;
 }
 
 .quiz-block .quiz-note {
 	margin-bottom: 0.5rem;
 }
 
-/* The help text sits right on top of the answers otherwise. */
+/* The help text sits right on top of the answers otherwise, and two notes in a
+   row read as one paragraph. */
 .quiz-note + .quiz-answers {
 	margin-top: 0.75rem;
+}
+
+.quiz-note + .quiz-note {
+	margin-top: 0.5rem;
 }
 
 .quiz-answers,

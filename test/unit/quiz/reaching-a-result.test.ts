@@ -44,14 +44,13 @@ describe("resolve", () => {
 		const outcome = resolve(quiz, state);
 
 		// then it is a recommendation, with nothing else to weigh
-		expect(outcome).toMatchObject({
+		expect(outcome).toEqual({
 			status: "resolved",
-			option: { slug: "c" },
-			alternatives: [],
+			option: { slug: "c", tags: [] },
 		});
 	});
 
-	it("puts what no question tells apart behind the recommendation", () => {
+	it("leaves what no question tells apart side by side", () => {
 		// given a pool no remaining question separates
 		const half = quizOf(
 			[tagged("a", "hot"), tagged("b", "hot")],
@@ -61,11 +60,10 @@ describe("resolve", () => {
 		// when the outcome is read
 		const outcome = resolve(half, startQuiz(half));
 
-		// then the first declared leads, the other coming as an alternative
+		// then neither leads: nothing is left to ask that would rank them
 		expect(outcome).toMatchObject({
-			status: "resolved",
-			option: { slug: "a" },
-			alternatives: [{ slug: "b" }],
+			status: "undecided",
+			options: [{ slug: "a" }, { slug: "b" }],
 		});
 	});
 

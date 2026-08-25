@@ -16,10 +16,6 @@ export const DocLink = ({ doc }: { doc: Doc }) => (
 	</a>
 );
 
-/** One page under one name is one link, whatever points at it. */
-export const sameLink = (one: Doc, other: Doc) =>
-	one.href === other.href && one.title === other.title;
-
 type BlockProps = {
 	heading: string;
 	note?: string;
