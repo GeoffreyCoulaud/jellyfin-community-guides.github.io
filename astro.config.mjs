@@ -17,15 +17,21 @@ export default defineConfig({
             },
         ],
         sidebar: [
+            "get-started",
             {
                 label: "Quiz",
                 items: [{ autogenerate: { directory: "quiz" } }],
             },
             {
-                label: "Guides",
+                label: "Remote access",
                 items: [
-                    // Each item here is one entry in the navigation menu.
-                    { autogenerate: { directory: "guides" } },
+                    { autogenerate: { directory: "guides/remote-access" } },
+                ],
+            },
+            {
+                label: "Reverse proxy",
+                items: [
+                    { autogenerate: { directory: "guides/reverse-proxy" } },
                 ],
             },
             {
@@ -33,5 +39,8 @@ export default defineConfig({
                 items: [{ autogenerate: { directory: "reference" } }],
             },
         ],
+        // Sorts each group and hands its links the icon of what they document
+        routeMiddleware: "./src/starlightRouteData.ts",
+        customCss: ["./src/styles/sidebar.css"],
 		}), mermaid(), react()],
 });

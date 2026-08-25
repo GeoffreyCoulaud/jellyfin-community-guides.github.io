@@ -1,3 +1,0 @@
----
-title: "Tailscale, free plan"
----

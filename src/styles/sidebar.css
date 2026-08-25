@@ -1,0 +1,20 @@
+/* Guides show the icon of the tool they cover. The route middleware hands each
+   link its `--sidebar-icon`; drawing it is all that is left here. Unlayered, so
+   it overrides the `display: block` Starlight sets in its own cascade layer. */
+
+.sidebar a[data-emblem] {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+/* Same white tile as the quizzes, for the same reason: a near-black mark has
+   to stay visible once the dark theme is on. */
+.sidebar a[data-emblem]::before {
+	content: "";
+	flex: none;
+	width: 1.4em;
+	height: 1.4em;
+	border-radius: 22%;
+	background: var(--sidebar-icon) center / 80% no-repeat #fff;
+}

@@ -4,22 +4,11 @@ import {
 	type ReverseProxy,
 	type ReverseProxySlug,
 } from "../quiz/reverse-proxy";
-import { QuizRunner, type Doc } from "./QuizRunner";
+import { reverseProxyGuide } from "../guides";
+import { QuizRunner } from "./QuizRunner";
 
-const titles: Record<ReverseProxySlug, string> = {
-	caddy: "Caddy",
-	traefik: "Traefik",
-	"caddy-docker-proxy": "Caddy Docker Proxy",
-	"nginx-proxy-manager": "Nginx Proxy Manager",
-	zoraxy: "Zoraxy",
-	nginx: "Nginx",
-	"tailscale-funnel": "Tailscale Funnel",
-};
-
-const doc = (proxy: ReverseProxy): Doc => ({
-	title: titles[proxy.slug as ReverseProxySlug],
-	href: `/guides/reverse-proxy/${proxy.slug}/`,
-});
+const doc = (proxy: ReverseProxy) =>
+	reverseProxyGuide(proxy.slug as ReverseProxySlug);
 
 export const ReverseProxyQuiz = () => (
 	<QuizRunner quiz={reverseProxyQuiz} doc={doc} traits={traits} />

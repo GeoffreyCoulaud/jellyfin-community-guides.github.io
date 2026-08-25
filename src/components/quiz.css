@@ -34,6 +34,13 @@
 	font-size: var(--sl-text-sm);
 }
 
+/* The emblem leads, the name of the recommendation follows it. */
+.quiz-result-title {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+
 .quiz-title {
 	margin: 0 0 0.75rem;
 	font-size: var(--sl-text-h4);
@@ -169,8 +176,21 @@
 	color: var(--sl-color-text-accent);
 }
 
-.quiz-links li::before {
-	content: "→ ";
+/* An emblem marks its own row. The guides that document a task rather than a
+   tool have none, and keep the arrow. */
+.quiz-links {
+	gap: 0.4rem;
+}
+
+.quiz-links li,
+.quiz-links a {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.quiz-links li:not(:has(.emblem))::before {
+	content: "→";
 	color: var(--sl-color-gray-3);
 }
 

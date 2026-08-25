@@ -1,0 +1,53 @@
+/* Everything here is sized off `--emblem-size`, so a caller only sets that one
+   number and the pips follow. */
+
+.emblem {
+	--emblem-size: 1.75rem;
+	position: relative;
+	display: inline-block;
+	flex: none;
+	width: var(--emblem-size);
+	height: var(--emblem-size);
+	line-height: 0;
+}
+
+.emblem-title {
+	--emblem-size: 2.5rem;
+}
+
+/* A white tile under every logo. Several of these marks are near-black, and
+   would go missing on the dark theme; on the light theme the tile lands on the
+   page's own white and disappears, so it only shows where it earns its place. */
+.emblem-icon {
+	box-sizing: border-box;
+	width: 100%;
+	height: 100%;
+	padding: 10%;
+	border-radius: 22%;
+	background: #fff;
+}
+
+/* One pip is a circle, several are the same container gone wide. It hangs off
+   the corner, over its own background, so it stays readable on any icon. */
+.emblem-pips {
+	position: absolute;
+	right: calc(var(--emblem-size) / -12);
+	bottom: calc(var(--emblem-size) / -12);
+	display: flex;
+	align-items: center;
+	gap: calc(var(--emblem-size) / 20);
+	padding: calc(var(--emblem-size) / 20);
+	border-radius: 999px;
+	background: var(--sl-color-bg);
+	box-shadow: 0 0 0 1px var(--sl-color-gray-5);
+}
+
+/* Masked rather than drawn: the glyph then takes the page's own text colour,
+   light theme and dark theme alike. */
+.emblem-pip {
+	width: calc(var(--emblem-size) / 3.4);
+	height: calc(var(--emblem-size) / 3.4);
+	background-color: var(--sl-color-gray-2);
+	-webkit-mask: var(--pip) center / contain no-repeat;
+	mask: var(--pip) center / contain no-repeat;
+}

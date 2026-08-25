@@ -1,3 +1,0 @@
----
-title: "Tailscale, Standard plan"
----

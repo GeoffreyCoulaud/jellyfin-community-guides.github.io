@@ -17,10 +17,16 @@ import {
 	type Step,
 	type Trait,
 } from "../quiz/engine";
+import type { Emblem as EmblemData } from "../icons/emblems";
+import { Emblem } from "./Emblem";
 import "./quiz.css";
 
-/** An option or an extra guide, as the page the user should end up reading. */
-export type Doc = { title: string; href: string };
+/**
+ * An option or an extra guide, as the page the user should end up reading. Two
+ * options can name the same page, so the emblem travels with the option rather
+ * than being looked up from where it points.
+ */
+export type Doc = { title: string; href: string; emblem?: EmblemData };
 
 type Props<O extends Option> = {
 	quiz: Quiz<O>;
@@ -51,6 +57,14 @@ const linkify = (text: string) =>
 
 const Badge = ({ children }: { children: string }) => (
 	<span className="quiz-badge">{children}</span>
+);
+
+/** A page to go and read, behind the icon of whatever it documents. */
+const DocLink = ({ doc }: { doc: Doc }) => (
+	<a href={doc.href}>
+		<Emblem emblem={doc.emblem} />
+		{doc.title}
+	</a>
 );
 
 /** Facts hold, preferences get weighed again: worth knowing before answering. */
@@ -97,7 +111,10 @@ const Result = <O extends Option>({
 
 	return (
 		<section>
-			<h2 className="quiz-title">{match.title}</h2>
+			<h2 className="quiz-title quiz-result-title">
+				<Emblem emblem={match.emblem} size="title" withPips />
+				{match.title}
+			</h2>
 			<p>
 				<a className="quiz-cta" href={match.href}>
 					Read the guide
@@ -113,7 +130,7 @@ const Result = <O extends Option>({
 					<ul className="quiz-links">
 						{alternatives.map((other) => (
 							<li key={other.slug}>
-								<a href={doc(other).href}>{doc(other).title}</a>
+								<DocLink doc={doc(other)} />
 							</li>
 						))}
 					</ul>
@@ -167,7 +184,7 @@ const Result = <O extends Option>({
 					<ul className="quiz-links">
 						{extra.map((guide) => (
 							<li key={guide.href}>
-								<a href={guide.href}>{guide.title}</a>
+								<DocLink doc={guide} />
 							</li>
 						))}
 					</ul>
