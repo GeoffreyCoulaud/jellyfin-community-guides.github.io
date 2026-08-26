@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+	deadAnswers,
 	keepAll,
 	liveAnswers,
 	nextQuestion,
@@ -249,6 +250,39 @@ describe("liveAnswers", () => {
 			"cold",
 			"either",
 		]);
+	});
+});
+
+describe("deadAnswers", () => {
+	it("names the answers nothing left standing fits", () => {
+		// given a pool where nobody is served cold
+		const hot = options.filter(has("hot"));
+
+		// when the answers with nothing behind them are named
+		const named = deadAnswers(openEnded, hot);
+
+		// then it is the dead end, the way out and the live answer left out
+		expect(named.map((answer) => answer.id)).toEqual(["cold"]);
+	});
+
+	it("comes back empty while every answer still leads somewhere", () => {
+		// given a pool everything is still open on
+		// when the answers with nothing behind them are named
+		// then there are none: the whole question is still there to pick from
+		expect(deadAnswers(openEnded, options)).toEqual([]);
+	});
+
+	it("leaves the question whole, read against what it offers", () => {
+		// given a pool where nobody is served cold
+		const hot = options.filter(has("hot"));
+
+		// when both sides are read
+		const offered = liveAnswers(openEnded, hot);
+		const named = deadAnswers(openEnded, hot);
+
+		// then between them they account for every answer, and share none
+		expect(offered.length + named.length).toBe(openEnded.answers.length);
+		expect(offered.filter((answer) => named.includes(answer))).toEqual([]);
 	});
 });
 

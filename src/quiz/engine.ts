@@ -225,6 +225,12 @@ export const liveAnswers = <O extends Option>(
 	pool: readonly O[],
 ) => question.answers.filter((answer) => pool.some(answer.keep));
 
+/** Its mirror: shown rather than dropped, an answer vanishing forces a hand. */
+export const deadAnswers = <O extends Option>(
+	question: Question<O>,
+	pool: readonly O[],
+) => question.answers.filter((answer) => !pool.some(answer.keep));
+
 export const applyAnswer = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
