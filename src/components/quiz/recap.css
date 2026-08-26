@@ -1,5 +1,3 @@
-/* What was answered, and the badge every answer is labelled by. */
-
 .quiz-badge {
 	display: inline-block;
 	vertical-align: middle;
@@ -50,8 +48,7 @@
 	flex: 1;
 }
 
-/* Dim until the row is pointed at, but never gone: a hidden pencil is one no
-   touchscreen ever finds. */
+/* Never fully hidden: a pencil that appears on hover is one no touchscreen finds. */
 .quiz-edit {
 	flex: none;
 	width: auto;

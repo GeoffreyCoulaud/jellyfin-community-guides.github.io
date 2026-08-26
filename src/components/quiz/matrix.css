@@ -1,20 +1,11 @@
-/* The options left as a grid, one column each, one row per thing said. */
-
-/* Everything the table is made of, and the one thing that is not: the pin the
-   header takes its place from. `--head` lives here so both can read it. */
+/* `--head` lives on the frame: the table and the pin outside it both read it. */
 .quiz-matrix-frame {
 	--head: 3.25rem;
 }
 
-/* The header's own travel, worked out where a browser can still work it out.
-   Sticky in here binds to the page, which does scroll down; inside the box
-   below it would bind to a box that never does. As tall as the header, so it
-   comes to a stop at the foot of the table on the same row the header does.
-   `Matrix.tsx` reads it and hands the offset on.
-
-   The room it takes is taken back off the table below rather than off its own
-   margin box: a sticky box is held inside its container by that margin box, and
-   a negative margin there would buy it a header's worth of travel too many. */
+/* Sticky binds to the page here; inside the scrolling box below it would bind
+   to a box that never scrolls down. As tall as the header, so `Matrix.tsx` can
+   read the header's own travel off it. */
 .quiz-matrix-pin {
 	position: sticky;
 	top: calc(var(--sl-nav-height) + var(--sl-mobile-toc-height));
@@ -22,20 +13,17 @@
 	pointer-events: none;
 }
 
-/* Wider than the room it has the table scrolls, sideways and on its own; down
-   the page it is a stretch of page like any other. */
+/* The pin's height is taken back here rather than off its own margin box: a
+   negative margin there would buy the sticky box that much extra travel. */
 .quiz-matrix-scroll {
 	margin-top: calc(-1 * var(--head));
 	overflow-x: auto;
-	/* A swipe that runs off the right edge is a reader reaching the last
-	   column, not one asking the browser to go back a page. */
+	/* A swipe off the right edge must not read as a back gesture. */
 	overscroll-behavior-x: contain;
 }
 
-/* Left to size itself: every column is as wide as what it holds, so two options
-   are two columns and not two slivers against a page of white space. Separate
-   borders rather than collapsed, a collapsed border leaving the sticky first
-   column behind when the rest scrolls under it. */
+/* Separate borders rather than collapsed: a collapsed border leaves the sticky
+   first column behind when the rest scrolls under it. */
 .quiz-matrix {
 	--radius: 0.5rem;
 	border-collapse: separate;
@@ -53,9 +41,8 @@
 	border-bottom: 1px solid var(--sl-color-gray-5);
 }
 
-/* Every other row, faintly: enough to follow one across, not enough to read as
-   a second kind of row. Counted over the rows that say something, so a section
-   starting on a title does not start its banding on the wrong foot. */
+/* Counted over the rows that say something, so a section starting on a title
+   does not start its banding on the wrong foot. */
 .quiz-matrix tbody tr:nth-child(odd of :not(.quiz-matrix-break)) {
 	--row-bg: color-mix(
 		in srgb,
@@ -64,8 +51,6 @@
 	);
 }
 
-/* A section is the block, not the table: the cells close it off to the left and
-   over its first row, the rest of the sides being every cell's own. */
 .quiz-matrix tbody tr:not(.quiz-matrix-break) > *:first-child {
 	border-left: 1px solid var(--sl-color-gray-5);
 }
@@ -75,8 +60,7 @@
 	border-top: 1px solid var(--sl-color-gray-5);
 }
 
-/* A cell fills its corner square unless told otherwise, and a filled square
-   under a rounded corner is what makes a rounded corner look broken. */
+/* Per cell: a filled corner square under a rounded corner looks broken. */
 .quiz-matrix tbody > tr:first-child:not(.quiz-matrix-break) > *:first-child,
 .quiz-matrix .quiz-matrix-break + tr > *:first-child {
 	border-top-left-radius: var(--radius);
@@ -95,13 +79,8 @@
 	border-bottom-right-radius: var(--radius);
 }
 
-/* Nothing on the band but the emblems: no rule under them, and no border. The
-   band the emblems sit in is the line a section title opens on too, the same
-   box for both, so the air between two blocks is the header's own.
-
-   `--shift` is the header holding its place at the top of the screen, and is
-   set from the script on the row itself. Over the rows below, which are pinned
-   to the left and so are drawn as positioned boxes themselves. */
+/* `--shift` is set from the script and holds the header at the top of the
+   screen; positioned, so it draws over the rows pinned to the left below. */
 .quiz-matrix thead th,
 .quiz-matrix thead td {
 	position: relative;
@@ -113,15 +92,10 @@
 	transform: translateY(var(--shift, 0px));
 }
 
-/* All a column is headed by, and so drawn a size up from the emblems that only
-   sit beside a name. */
 .quiz-matrix thead .emblem {
 	--emblem-size: 2rem;
 }
 
-/* The corner the labels run under, the first one on the line the emblems are
-   on. Pinned to the left with them, and over them: what scrolls past a title is
-   the columns it heads, and they go under it. */
 .quiz-matrix .quiz-matrix-title {
 	position: sticky;
 	left: 0;
@@ -135,37 +109,31 @@
 	border: 0;
 }
 
-/* A section names itself in the corner for as long as it is the section being
-   read, and gives the corner up to the next one. `--shift` is that climb, held
-   inside the section's own rows and set from the script; over the header, which
-   is how the corner changes hands. */
+/* `--shift` climbs the title through its own section, over the header: that is
+   how the corner changes hands. */
 .quiz-matrix .quiz-matrix-break > .quiz-matrix-title {
 	z-index: 4;
 	transform: translateY(var(--shift, 0px));
 }
 
-/* What is left of the line a section title opens: nothing, which is the air
-   between two blocks. */
 .quiz-matrix .quiz-matrix-break > td {
 	background: none;
 	border: 0;
 }
 
-/* Pinned to the left: a dozen options left is a table that scrolls sideways,
-   and a mark with no words in reach of it says nothing. */
+/* Pinned to the left: the table scrolls sideways, and a mark with no label in
+   reach says nothing. */
 .quiz-matrix tbody th[scope="row"] {
 	position: sticky;
 	left: 0;
 	z-index: 1;
-	/* Room to read on, and no more: the column asks for its longest label on
-	   one line and gives that back, line by line, to whatever the marks need */
+	/* Enough for the longest label on one line; the rest wraps. */
 	min-width: 14rem;
 	font-weight: normal;
 	text-align: left;
 	color: var(--sl-color-gray-2);
 }
 
-/* The marks the rest of the quiz reads its pros and cons by. */
 .quiz-mark-pro {
 	color: var(--sl-color-text-accent);
 }
@@ -174,12 +142,10 @@
 	color: var(--sl-color-gray-3);
 }
 
-/* Ahead of the words it lets you refuse, on the line with them. */
 .quiz-matrix tbody button {
 	display: inline-block;
 	vertical-align: middle;
 	margin-right: 0.4rem;
-	/* Sized off the text it sits in, the table's size being the page's */
 	width: 1.7em;
 	height: 1.5em;
 	padding: 0;
@@ -197,8 +163,7 @@
 	border-color: var(--sl-color-text-accent);
 }
 
-/* An empty cell says "no" to whoever sees it and nothing at all to whoever
-   hears it, hence the word hidden inside it. */
+/* An empty cell says "no" to whoever sees it and nothing to whoever hears it. */
 .quiz-hidden {
 	position: absolute;
 	width: 1px;

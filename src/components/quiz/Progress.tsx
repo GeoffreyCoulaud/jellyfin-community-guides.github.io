@@ -14,7 +14,6 @@ type Props<O extends Option> = {
 	doc: (option: O) => Doc;
 };
 
-/** Ruled out, still listed: what the bar is counting is worth seeing by name. */
 const PoolRow = ({ page, standing }: { page: Doc; standing: boolean }) => (
 	<li className={standing ? undefined : "quiz-pool-out"}>
 		<Emblem emblem={page.emblem} />
@@ -23,11 +22,9 @@ const PoolRow = ({ page, standing }: { page: Doc; standing: boolean }) => (
 );
 
 /**
- * How far the quiz has got, as one bar over the two counts it captions. Options
- * are measured against `total - 1`, not `total`: one option left is the end of
- * the quiz, so the last elimination fills the bar rather than leaving it a step
- * short. Questions are measured against what is still worth asking, which is
- * what moves the bar when an answer rules nothing out.
+ * Options are measured against `total - 1`, not `total`: one option left is the
+ * end of the quiz, so the last elimination fills the bar rather than leaving it
+ * a step short.
  */
 export const Progress = <O extends Option>({ quiz, state, doc }: Props<O>) => {
 	const total = quiz.options.length;

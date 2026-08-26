@@ -1,11 +1,7 @@
 /**
- * The options left, as a grid to read down rather than a page to read through.
- * What the engine hands over is a pool and what can be said of each of it; what
- * comes back is one column per option and one row per thing said, ordered so
- * that a reader can weigh them without the quiz having weighed them first.
- *
- * None of this decides anything, which is why it is not the engine's: an order
- * to read in is a matter of what a page can hold.
+ * The pool as a grid: one column per option, one row per thing said. None of it
+ * decides anything, which is why it is not the engine's: an order to read in is
+ * a matter of what a page can hold.
  */
 
 import type { Option, Step, Trait } from "./engine";
@@ -15,7 +11,6 @@ const worded = <O extends Option>(trait: Trait<O>) =>
 	`${trait.id}/${trait.tone}/${trait.label}`;
 
 export type Row<O extends Option> = {
-	/** Same axis, same side, same words: what makes one row rather than two. */
 	key: string;
 	label: string;
 	tone: "pro" | "con";
@@ -40,12 +35,6 @@ const count = <O extends Option>(
 ) => traits.filter((trait) => trait.tone === tone).length;
 
 /**
- * The cards as a grid: one column per option, one row per thing said about any
- * of them, and a row every column carries marked as telling none of them apart.
- * Said once over the lot it would be a screen of its own; said here it is a row
- * a reader can leave folded away and open when what they all have in common is
- * what they want to know.
- *
  * Columns lead with the most pros, then the fewest cons, which is an order to
  * read in and not a ranking: the quiz ran out of questions, so counting words
  * on a card is the whole of what anyone here can do to them.

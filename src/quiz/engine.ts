@@ -9,9 +9,8 @@ export type Option = { slug: string };
 
 export type Answer<O extends Option> = {
 	/**
-	 * What a shared link cites, so the wording is free to change under it. What
-	 * the answer keeps is not: an answer that changes its mind needs a new id,
-	 * or an old link comes back meaning something nobody said.
+	 * What a shared link cites. An answer that changes what it keeps needs a new
+	 * id, or an old link comes back meaning something nobody said.
 	 */
 	id: string;
 	label: string;
@@ -22,19 +21,14 @@ export type Answer<O extends Option> = {
 export type Question<O extends Option> = {
 	id: string;
 	question: string;
-	/** Shown next to the question, for the ones nobody can answer as written. */
 	help?: string;
 	/**
-	 * Pinned to the front. For the questions a later preference depends on: being
-	 * asked where connections should arrive, before knowing whether a port can be
-	 * opened, reads as a free choice when it is not one.
+	 * Pinned to the front, for the questions a later preference depends on: being
+	 * asked where connections should arrive before knowing whether a port can be
+	 * opened reads as a free choice when it is not one.
 	 */
 	asksFirst?: boolean;
-	/**
-	 * A fact about the user or their network, against a preference they could be
-	 * talked out of. What it decides is `reconsider`: facts hold, preferences are
-	 * weighed again.
-	 */
+	/** What `reconsider` decides on: facts hold, preferences are weighed again. */
 	kind: "fact" | "preference";
 	answers: readonly Answer<O>[];
 };
@@ -43,21 +37,17 @@ export type Quiz<O extends Option> = {
 	options: readonly O[];
 	questions: readonly Question<O>[];
 	/**
-	 * Plainly worse than another option, with nothing left to weigh against it.
-	 * Asked only once no remaining question could turn out in the candidate's
-	 * favour, so it carries the judgement and never its timing.
+	 * Plainly worse than another option. Asked only once no remaining question
+	 * could turn out in the candidate's favour, so it carries the judgement and
+	 * never its timing.
 	 */
 	worseThan?: (candidate: O, other: O) => boolean;
 };
 
-/**
- * Something the user told us: an answer, or a con they refused outright. Both
- * narrow the pool, which is all the engine needs from them.
- */
+/** An answer, or a con refused outright: both narrow the pool. */
 export type Step<O extends Option> = {
 	/** The answer picked, or the axis the refused con was read off. */
 	id: string;
-	/** The answer picked, or the con refused. */
 	label: string;
 	keep: (option: O) => boolean;
 	/** The question answered. Absent when a con was refused instead. */
@@ -67,9 +57,9 @@ export type Step<O extends Option> = {
 };
 
 /**
- * A plain fact about one option, pro or con, read off an `Axis` without knowing
- * what the user answered. A con keeps the predicate its axis tested, so calling
- * it a dealbreaker needs no question worded as its refusal.
+ * Read off an `Axis` without knowing what the user answered. A con keeps the
+ * predicate its axis tested, so calling it a dealbreaker needs no question
+ * worded as its refusal.
  */
 export type Trait<O extends Option> = {
 	/** The axis it was read off, which is what a refusal is cited by. */
@@ -91,17 +81,15 @@ export const keepAll = () => true;
 type Side<O extends Option> = string | ((option: O) => string);
 
 /**
- * One property of the options, and what it is worth saying about the one being
- * recommended. `holds` picks the side: `pro` when the property holds of that
- * option, `con` when it does not. Refusing that con is asking for the options
+ * One property of the options. `holds` picks the side: `pro` when it holds of
+ * the option, `con` when it does not. Refusing that con asks for the options
  * where it does hold, so `holds` is the way out of the con as much as its test.
- * Leaving a side out says nothing, which is how a property only worth a word one
- * way round is written.
+ * Leaving a side out says nothing.
  */
 export type Axis<O extends Option> = {
 	/** What a refused con is cited by, the label being free to move under it. */
 	id: string;
-	/** Worth a word at all: an axis with nothing to say is left out of the list. */
+	/** An axis with nothing to say about an option is left out of its list. */
 	applies?: (option: O) => boolean;
 	holds: (option: O) => boolean;
 	pro?: Side<O>;
@@ -111,7 +99,6 @@ export type Axis<O extends Option> = {
 const say = <O extends Option>(side: Side<O>, option: O) =>
 	typeof side === "string" ? side : side(option);
 
-/** Reads every axis against one option, the silent sides dropping out. */
 export const describe = <O extends Option>(
 	option: O,
 	axes: readonly Axis<O>[],
@@ -158,8 +145,8 @@ const wasAsked = <O extends Option>(steps: readonly Step<O>[], id: string) =>
 
 /**
  * Every answer keeping the candidate keeps this one too, so nothing left to ask
- * can turn out in the candidate's favour. What lets an outclassed option go as
- * soon as it is outclassed, rather than at the last question.
+ * can turn out in the candidate's favour. Lets an outclassed option go as soon
+ * as it is outclassed, rather than at the last question.
  */
 const subsumes = <O extends Option>(
 	quiz: Quiz<O>,
@@ -175,10 +162,7 @@ const subsumes = <O extends Option>(
 			),
 		);
 
-/**
- * What the steps keep, minus what another option outclasses. One pool, so the
- * count, the list and the result cannot disagree on what is still standing.
- */
+/** One pool, so the count, the list and the result cannot disagree. */
 const prune = <O extends Option>(quiz: Quiz<O>, steps: readonly Step<O>[]) => {
 	const kept = quiz.options.filter((option) =>
 		steps.every((step) => step.keep(option)),
@@ -201,7 +185,6 @@ const replay = <O extends Option>(
 
 export const startQuiz = <O extends Option>(quiz: Quiz<O>) => replay(quiz, []);
 
-/** Unasked, and still telling the pool apart: what there is left to ask. */
 const askable = <O extends Option>(quiz: Quiz<O>, state: QuizState<O>) =>
 	state.pool.length <= 1
 		? []
@@ -213,8 +196,7 @@ const askable = <O extends Option>(quiz: Quiz<O>, state: QuizState<O>) =>
 /**
  * The greedy pick: prunes the most in the worst case, declaration order breaks
  * ties, `asksFirst` jumps the queue. No tier puts facts first: a question earns
- * its place by separating options, and what it never asks about is on the card
- * as a con, with a Dealbreaker button on it.
+ * its place by separating options.
  */
 export const nextQuestion = <O extends Option>(
 	quiz: Quiz<O>,
@@ -229,19 +211,15 @@ export const nextQuestion = <O extends Option>(
 		.at(0);
 
 /**
- * How many questions are still worth asking, which is a ceiling rather than a
- * count: an answer can settle a question nobody has been asked yet, so what is
- * left falls by one at least, often by more.
+ * A ceiling rather than a count: an answer can settle a question nobody has
+ * been asked yet, so what is left falls by one at least, often by more.
  */
 export const questionsLeft = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
 ) => askable(quiz, state).length;
 
-/**
- * Answers still leading somewhere: offering one that empties the pool asks the
- * user to pick a dead end.
- */
+/** Offering an answer that empties the pool asks the user to pick a dead end. */
 export const liveAnswers = <O extends Option>(
 	question: Question<O>,
 	pool: readonly O[],
@@ -259,8 +237,7 @@ export const applyAnswer = <O extends Option>(
 	]);
 
 /**
- * "over-constrained": every option is ruled out, so the honest answer is to set
- * none of this up, or to walk one answer back.
+ * "over-constrained": every option is ruled out.
  * "undecided": several are left and nothing is left to ask, so none of them
  * leads. Declaration order is an order, not a ranking: what would rank them is
  * exactly what the quiz ran out of questions to ask.
@@ -276,10 +253,7 @@ export const resolve = <O extends Option>(
 	return { status: "undecided", options: state.pool } as const;
 };
 
-/**
- * Turn a con into a dealbreaker: every option carrying it leaves for good, the
- * facts hold, the preferences are weighed again. Earlier dealbreakers stay.
- */
+/** A dealbreaker holds like a fact: only the preferences are weighed again. */
 export const reconsider = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
@@ -290,14 +264,12 @@ export const reconsider = <O extends Option>(
 		refused,
 	]);
 
-/** Back to just before that step, dropping it and everything after it. */
 export const rewind = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
 	index: number,
 ): QuizState<O> => replay(quiz, state.steps.slice(0, index));
 
-/** Take one step back, a blocker being the reason to. */
 export const dropStep = <O extends Option>(
 	quiz: Quiz<O>,
 	state: QuizState<O>,
@@ -309,8 +281,8 @@ export const dropStep = <O extends Option>(
 	);
 
 /**
- * Nothing is left, so a step has to give: the ones that, taken back on their
- * own, open the pool up again. Empty means two of them have to go.
+ * The steps that, taken back on their own, open the pool up again. Empty means
+ * two of them have to go.
  */
 export const blockers = <O extends Option>(
 	quiz: Quiz<O>,
@@ -324,7 +296,6 @@ export const blockers = <O extends Option>(
 		),
 	);
 
-/** An earlier state, read off its steps rather than the clicks that made them. */
 export const restore = <O extends Option>(
 	quiz: Quiz<O>,
 	steps: readonly Step<O>[],

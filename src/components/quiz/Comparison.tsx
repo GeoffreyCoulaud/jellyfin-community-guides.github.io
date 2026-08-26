@@ -16,11 +16,8 @@ type Props<O extends Option> = {
 };
 
 /**
- * Several left and no question to tell them apart, so none is put forward: it
- * all goes in one grid, where what only one of them says is what shows and what
- * they all say is a click away. Every question that could have decided this has
- * been asked, which is what makes the rest the reader's own call rather than
- * the quiz ducking one.
+ * None is put forward: every question that could have told them apart has been
+ * asked, which makes the rest the reader's own call.
  */
 export const Comparison = <O extends Option>({
 	options,

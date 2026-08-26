@@ -1,5 +1,4 @@
-/* The island sits in Starlight's markdown content, whose vertical rhythm would
-   space every button apart: `not-content` on the root turns all of it off, so
+/* `not-content` on the root turns Starlight's markdown styling off, so
    everything below is on us, links and headings included. */
 
 .quiz {
@@ -39,8 +38,6 @@
 	color: var(--sl-color-white);
 }
 
-/* The emblem leads, the name follows it. Nothing under either but blocks
-   bringing their own margin, so they keep none of their own. */
 .quiz-result-title {
 	display: flex;
 	align-items: center;
@@ -60,7 +57,6 @@
 	margin-top: 1.75rem;
 }
 
-/* Under a heading of its own, a block is closer to it than to a page of prose. */
 .quiz-block > .quiz-block {
 	margin-top: 0.75rem;
 }
@@ -69,8 +65,6 @@
 	margin-bottom: 0.5rem;
 }
 
-/* The help text sits right on top of the answers otherwise, and two notes in a
-   row read as one paragraph. */
 .quiz-note + .quiz-answers {
 	margin-top: 0.75rem;
 }
@@ -106,8 +100,6 @@
 	background: var(--sl-color-gray-6);
 }
 
-/* Same row as the recap, with the action spelled out: a row showing nothing but
-   an answer reads as an answer, which is what made this screen unclear. */
 .quiz-swaps button {
 	display: flex;
 	gap: 0.4rem;
@@ -120,8 +112,6 @@
 	color: var(--sl-color-text-accent);
 }
 
-/* An emblem marks its own row. The guides that document a task rather than a
-   tool have none, and keep the arrow. */
 .quiz-links {
 	gap: 0.4rem;
 }
@@ -133,6 +123,7 @@
 	gap: 0.5rem;
 }
 
+/* The pages documenting a task rather than a tool have no emblem. */
 .quiz-links li:not(:has(.emblem))::before {
 	content: "→";
 	color: var(--sl-color-gray-3);

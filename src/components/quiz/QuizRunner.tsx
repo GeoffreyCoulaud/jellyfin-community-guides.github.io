@@ -19,8 +19,6 @@ import { givesFirst } from "./Step";
 import { Stuck } from "./Stuck";
 import { useSharedState } from "./useSharedState";
 import type { Doc } from "./Doc";
-// What every screen of the quiz is drawn on. The screens themselves each bring
-// their own, so this file holds only what more than one of them wears.
 import "./quiz.css";
 
 export type { Doc };
@@ -29,7 +27,6 @@ type Props<O extends Option> = {
 	quiz: Quiz<O>;
 	doc: (option: O) => Doc;
 	guides?: (option: O) => Doc[];
-	/** What the option is like, pros and cons, whatever the quiz asked. */
 	traits?: (option: O) => readonly Trait<O>[];
 };
 
@@ -48,14 +45,12 @@ export const QuizRunner = <O extends Option>({
 					(a, b) => givesFirst(a) - givesFirst(b),
 				)
 			: [];
-	// One left or several, the screen below names them all
 	const named =
 		outcome.status === "resolved" || outcome.status === "undecided";
 
 	return (
 		<div className="quiz not-content">
-			{/* The screen below names what is left, so the bar has nothing to add
-			    to it. Over-constrained keeps it: nothing is left to name there. */}
+			{/* The screen below names what is left, so the bar would only repeat it */}
 			{!named && <Progress quiz={quiz} state={state} doc={doc} />}
 
 			{question !== undefined && (

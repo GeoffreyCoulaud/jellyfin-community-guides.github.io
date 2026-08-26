@@ -5,20 +5,15 @@ import "./matrix.css";
 import { Emblem } from "../Emblem";
 import type { Doc } from "./Doc";
 
-/**
- * A row of the grid: what it says, and which columns say it. A guide names a
- * page to go and read, a pro or a con names nothing and only reads.
- */
+/** A guide names a page to go and read; a pro or a con names nothing. */
 type Line<O extends Option> = Row<O> & { href?: string };
 
 const carriers = <O extends Option>(line: Line<O>) =>
 	line.carried.filter((carried) => carried).length;
 
 /**
- * The extra guides as rows of their own: not something an option is like, but
- * something it takes, which is why they are marked the way cons are and never
- * folded away. Every option needing the same second guide is worth reading
- * before picking any of them, not worth hiding because they agree on it.
+ * Marked the way cons are and never folded away: a second guide every option
+ * needs is worth reading before picking any of them.
  */
 const guideLines = <O extends Option>(
 	columns: readonly O[],
@@ -46,10 +41,7 @@ const guideLines = <O extends Option>(
 		.sort((one, other) => carriers(other) - carriers(one));
 };
 
-/**
- * Whether the row applies to that column. The mark is decoration: the word is
- * what a screen reader is read, an empty cell saying "no" rather than nothing.
- */
+/** The mark is decoration: the word is what a screen reader is read. */
 const Cell = ({ tone, carried }: { tone: "pro" | "con"; carried: boolean }) => (
 	<td>
 		{carried && (
@@ -62,16 +54,10 @@ const Cell = ({ tone, carried }: { tone: "pro" | "con"; carried: boolean }) => (
 );
 
 /**
- * The emblems kept in sight at the top of the screen while the rows scroll
- * under them, and the section titles taking the corner under them in turn.
- *
- * Not `position: sticky`, and not for want of trying: the table scrolls
- * sideways in a box of its own, and a box that scrolls in one axis is the
- * scrollport for both, so a `top` set inside it is measured against something
- * that never scrolls down and holds nothing. The offset is taken instead from a
- * pin sitting outside that box, where sticky does work and the browser does the
- * arithmetic, and handed on as a plain translation. Nothing here changes the
- * layout: with the script gone the table reads exactly as it is written.
+ * Not `position: sticky`: the table scrolls sideways in a box of its own, and a
+ * box that scrolls in one axis is the scrollport for both, so a `top` set inside
+ * it is measured against something that never scrolls down. The offset is taken
+ * instead from a pin outside that box, and handed on as a plain translation.
  */
 const usePinnedHeader = (
 	pin: RefObject<HTMLDivElement | null>,
@@ -83,11 +69,8 @@ const usePinnedHeader = (
 		if (table === null || line === null) return;
 
 		let asked = 0;
-		// Set on the row the header is and on the title cell itself, rather
-		// than on the table and the row group holding them: an inherited
-		// property written high up has every cell under it restyled, and there
-		// are some hundreds of those. Unchanged is not written at all, which is
-		// every frame spent above the table or below it.
+		// Set on the header row and the title cell rather than on the table: an
+		// inherited property written high up restyles every cell under it.
 		const carry = (element: HTMLElement, pixels: number) => {
 			const travelled = `${pixels}px`;
 			if (element.style.getPropertyValue("--shift") === travelled) return;
@@ -97,12 +80,10 @@ const usePinnedHeader = (
 			asked = 0;
 			const head = table.tHead;
 			if (head === null) return;
-			// Measured first, written afterwards, never turn by turn: a style
-			// set between two measurements has the browser lay the table out
-			// again before it will answer the second one.
+			// Measured first, written afterwards: a style set between two
+			// measurements has the browser lay the table out again.
 			const pinned = line.getBoundingClientRect();
-			// The pin is as tall as the header and held back at the foot of the
-			// table with it, so what it reads is the header's own travel.
+			// The pin travels with the header, so this is the header's own travel
 			const travel: [HTMLElement, number][] = [
 				[head, pinned.top - table.getBoundingClientRect().top],
 			];
@@ -140,26 +121,14 @@ type Props<O extends Option> = {
 	table: Table<O>;
 	doc: (option: O) => Doc;
 	guides?: (option: O) => readonly Doc[];
-	/** Whether the rows every column carries are drawn or left folded away. */
 	revealed: boolean;
 	onDealbreaker: (refused: Step<O>) => void;
 };
 
 /**
- * What the options left say about themselves, side by side, under a heading per
- * kind of thing said, minus the rows all of them carry until a reader asks for
- * those. A column is headed by its emblem and named nowhere: a dozen names
- * across the top is a table nothing but the page's width can hold, and the list
- * under it names them all in the order they stand in. The header's `title`
- * names one on its own.
- *
- * A section is a row group, and its title sits in the column the labels run
- * down, pinned to the left edge as they are: the first title shares the line
- * the emblems are on, the ones after it open a line of their own.
- *
- * A con is refused from the label rather than from a column of its own at the
- * far end: with a dozen options left the table scrolls, and the label is the
- * one thing pinned where a reader can still reach it.
+ * A column is headed by its emblem and named nowhere: a dozen names across the
+ * top is a table nothing but the page's width can hold. A con is refused from
+ * its label, the one thing still in reach once the table scrolls sideways.
  */
 export const Matrix = <O extends Option>({
 	table,

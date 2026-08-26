@@ -11,9 +11,8 @@ type Money = { amount: number; currency: "EUR" | "USD" };
 type Seat = Money & { per: "user" | "device" };
 
 /**
- * The monthly bill. Not one number, because a flat fee that covers a handful of
- * seats and charges for the rest is a real shape: ZeroTier asks 18 USD before
- * the eleventh device, which "2 USD per device" on its own hides.
+ * Not one number: a flat fee covering a handful of seats and charging for the
+ * rest is a real shape, ZeroTier asking 18 USD before the eleventh device.
  */
 type Price =
 	| { perSeat: Seat; fixed?: undefined }
@@ -23,9 +22,8 @@ type Price =
 type TvClient = "official" | "sideload" | "none";
 
 /**
- * What the method needs from your home network to let connections in.
- * "nothing" covers tunnels and overlay networks: your server dials out, so
- * nothing at home has to be reachable from the outside.
+ * What the method needs from your home network. "nothing" covers tunnels and
+ * overlay networks: your server dials out, so nothing has to be reachable.
  */
 type HomeNetworkRequirement = "nothing" | "forwarded-port" | "public-ipv6";
 
@@ -73,12 +71,10 @@ export type RemoteAccessMethod = {
 	 * on: a DNS zone gets any method there, so it earns a guide, not a bad mark.
 	 */
 	hasBuiltInNameResolution: boolean;
-	/** Users, devices and routes are managed in a browser, from anywhere. */
 	hasWebInterface: boolean;
 	/**
-	 * How far the client gets onto a box people watch on. Never read on its own:
-	 * a method that publishes a public address has no client at all, so "none"
-	 * there means nothing to install rather than nothing that works.
+	 * Never read on its own: a method publishing a public address has no client
+	 * at all, so "none" means nothing to install rather than nothing that works.
 	 */
 	appleTv: "official" | "none"; // tvOS installs what the App Store carries
 	/** Android TV and Google TV, which the Play Store serves. */
@@ -444,10 +440,8 @@ const worksWithoutPublicIpv6 = (method: RemoteAccessMethod) =>
 	method.homeNetworkRequirement !== "public-ipv6";
 
 /**
- * Public or private, the point is having no reverse proxy to pick and run. An
- * or, not an and: serving both kinds is a capability, not a commitment, so a
- * tool is not marked down for the half its user may never set up. Which half it
- * covers is on the card, one axis each.
+ * An or, not an and: serving both kinds is a capability and not a commitment,
+ * so a tool is not marked down for the half its user may never set up.
  */
 const handlesTlsItself = (method: RemoteAccessMethod) =>
 	method.handlesTlsForPublicServices || method.handlesTlsForPrivateServices;
@@ -466,9 +460,8 @@ const isReachedAtHome = (method: RemoteAccessMethod) =>
 	method.homeNetworkRequirement !== "nothing";
 
 /**
- * Where a connection from outside lands first. Renting nothing does not put it
- * at home: a tunnel or an overlay network lands it on machines the vendor runs,
- * which is what needing nothing from your home network really means.
+ * Renting nothing does not put it at home: a tunnel or an overlay network lands
+ * it on machines the vendor runs.
  */
 const entryPoint = (method: RemoteAccessMethod) =>
 	isReachedAtHome(method)
@@ -500,9 +493,8 @@ const costsMoney = (method: RemoteAccessMethod) =>
 	hasSubscription(method) || hasHostingCost(method);
 
 /**
- * Two axes per box people watch on: whether it can run the client at all, then
- * which store it comes from. Both keep quiet about a method that publishes a
- * public address, there being no client to install in the first place.
+ * Both keep quiet about a method that publishes a public address: there is no
+ * client to install in the first place.
  */
 const tvAxes = (
 	slug: string,
@@ -524,10 +516,7 @@ const tvAxes = (
 	},
 ];
 
-/**
- * What the method is like, written without knowing what the user answered, so
- * the result reads as a description rather than a summary of the quiz.
- */
+/** Written without knowing what was asked: a description, not a summary. */
 const axes: readonly Axis<RemoteAccessMethod>[] = [
 	{
 		id: "subscription",
@@ -931,9 +920,8 @@ const service = ({
 }: RemoteAccessMethod) => rest;
 
 /**
- * Two plans of one service, the bill being the whole of the difference. Nothing
- * else may differ: a rented server and a hosted account both cost money, and
- * which of the two you want is a real choice.
+ * Nothing but the bill may differ: a rented server and a hosted account both
+ * cost money, and which of the two you want is a real choice.
  */
 const differsOnlyByTheBill = (
 	candidate: RemoteAccessMethod,
@@ -965,10 +953,8 @@ export type ExtraGuide =
 	| "private-dns";
 
 /**
- * What is left to set up once the method is picked. HTTPS is the one the quiz
- * does ask about, since it tells options apart; the rest it never asks, whether
- * the home address moves, how far into the house the VPN reaches and how
- * services get their names ruling no option out. Each earns a page instead.
+ * What is left to set up once the method is picked. HTTPS aside, the quiz never
+ * asks about these: they rule no option out, so each earns a page instead.
  */
 export const extraGuides = (method: RemoteAccessMethod): ExtraGuide[] => [
 	...(needsAReverseProxy(method) ? (["reverse-proxy"] as const) : []),

@@ -1,7 +1,4 @@
-/* The screen that stands several options side by side. */
-
-/* Worded as what it does rather than drawn as a control: what it opens is a
-   footnote to the grid, not half of it. */
+/* A footnote to the grid, not half of it: hence a link and not a button. */
 .quiz-reveal {
 	flex: none;
 	margin-block: 0.5rem;
@@ -20,7 +17,6 @@
 }
 
 
-/* The options again, plainly, in the order the columns come in. */
 .quiz .quiz-picks {
 	display: flex;
 	flex-direction: column;

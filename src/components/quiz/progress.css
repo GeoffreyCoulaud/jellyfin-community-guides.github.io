@@ -1,6 +1,3 @@
-/* How far the quiz has got: one bar, and the pool it counts. */
-
-/* The bar over the count it belongs to, one block. */
 .quiz-progress {
 	display: flex;
 	flex-direction: column;
@@ -46,7 +43,6 @@
 	--emblem-size: 1.25rem;
 }
 
-/* Ruled out, still listed: what the bar is counting is worth seeing by name. */
 .quiz-pool-out {
 	color: var(--sl-color-gray-4);
 }

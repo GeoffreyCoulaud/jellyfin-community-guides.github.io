@@ -1,7 +1,7 @@
 /**
- * The state as an address: one param per question, named the way the quiz names
- * it, holding the id of the answer picked. Nothing is packed into a string, so
- * the address bar reads as a list of what was answered.
+ * One param per question, named the way the quiz names it, holding the id of
+ * the answer picked. Nothing is packed into a string, so the address bar reads
+ * as a list of what was answered.
  */
 
 import {
@@ -13,16 +13,11 @@ import {
 	type Trait,
 } from "./engine";
 
-/** One param: what was asked, and what was picked. */
 export type Cited = [name: string, picked: string];
 
-/** The result card, as the list a refused con is picked from. */
 type Traits<O extends Option> = (option: O) => readonly Trait<O>[];
 
-/**
- * A refused con is named after the card it was read off, never after a
- * question, so an option and a question sharing a name stay apart.
- */
+/** Keeps an option and a question that share a name apart in the address. */
 const REFUSED = "_";
 
 const cite = <O extends Option>(step: Step<O>): Cited | undefined => {
@@ -52,19 +47,15 @@ const read = <O extends Option>(
 	return { id: answer.id, label: answer.label, keep: answer.keep, question };
 };
 
-/**
- * Nothing, rather than an address restoring something else: a step the quiz
- * cannot name is one a reader would have to guess at.
- */
+/** Nothing, rather than an address restoring something else. */
 export const encodeState = <O extends Option>(state: QuizState<O>) => {
 	const cited = state.steps.map(cite).filter((one) => one !== undefined);
 	return cited.length === state.steps.length ? cited : undefined;
 };
 
 /**
- * Reads back every param, in the order they come. One the quiz cannot name
- * fails the lot: a link half understood is worse than starting over, and what
- * a stray param is doing there is not for this to guess.
+ * One param the quiz cannot name fails the lot: a link half understood is worse
+ * than starting over.
  */
 export const decodeState = <O extends Option>(
 	quiz: Quiz<O>,

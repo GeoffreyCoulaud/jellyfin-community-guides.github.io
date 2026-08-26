@@ -1,24 +1,14 @@
-/**
- * What the site shows for one quiz option: the name people read, the page that
- * documents it, and the icon it goes by. One record per family, so a new option
- * stops the build until it has all three.
- */
-
 import type { Emblem, IconName } from "./icons/emblems";
 import type { ExtraGuide, MethodSlug } from "./quiz/remote-access";
 import type { ReverseProxySlug } from "./quiz/reverse-proxy";
 
 /**
- * `page` is a file under the family's directory, not the option's own slug.
- * Options whose guides would say the same thing share one: between a free plan
- * and a paid plan of the same service, nothing you install or configure
- * changes, so writing it twice would only mean maintaining it twice. The
- * options stay apart, since what they cost still decides between them; their
- * page does not, and the bill is a line on the result card.
+ * `page` is a file under the family's directory, not the option's own slug:
+ * options whose guides would say the same thing share one, a free plan and a
+ * paid plan of one service installing and configuring exactly the same thing.
  */
 type Listing = { title: string; page: string; emblem: Emblem };
 
-/** A listing as the quiz hands it to the reader: the page, resolved. */
 export type Guide = { title: string; href: string; emblem: Emblem };
 
 const remoteAccessDirectory = "/guides/remote-access";
@@ -88,8 +78,7 @@ const remoteAccess: Record<MethodSlug, Listing> = {
 		page: "cloudflare-tunnel",
 		emblem: { icon: "cloudflare" },
 	},
-	// The four Pangolins keep four pages: an edition and a place to run it both
-	// change what you set up, which is the whole of the guide
+	// Four pages: the edition and the place it runs both change what you set up
 	"pangolin-ce-on-vps": {
 		title: "Pangolin CE on a VPS",
 		page: "pangolin-ce-on-vps",
@@ -113,10 +102,9 @@ const remoteAccess: Record<MethodSlug, Listing> = {
 };
 
 /**
- * A tool that runs either way is one option, its guide covering both. Caddy is
- * the exception, and so the only one named twice: its DNS module is compiled
- * in, which one command does to a package and a Dockerfile of your own does to
- * an image. Two options, still one page, the name carrying the difference.
+ * A tool that runs either way is one option. Caddy is named twice for one page:
+ * its DNS module is compiled in, which one command does to a package and a
+ * Dockerfile of your own does to an image.
  */
 const reverseProxy: Record<ReverseProxySlug, Listing> = {
 	caddy: { title: "Caddy", page: "caddy", emblem: { icon: "caddy" } },
@@ -165,10 +153,7 @@ export const reverseProxyGuide = (slug: ReverseProxySlug) =>
 /** A page with no option behind it, so nothing to picture it by. */
 export type Extra = { title: string; href: string };
 
-/**
- * What is left to set up once the method is picked. The reverse proxy is a quiz
- * of its own, the rest are pages under the reference directory.
- */
+/** The reverse proxy is a quiz of its own, the rest are reference pages. */
 export const extraPages: Record<ExtraGuide, Extra> = {
 	"reverse-proxy": {
 		title: "Pick a reverse proxy for HTTPS",
@@ -193,9 +178,8 @@ export const extraPages: Record<ExtraGuide, Extra> = {
 };
 
 /**
- * The icon a page carries in the sidebar. Options sharing a page share their
- * icon by construction: nothing that changed the icon would leave the guide the
- * same. No pips, there being no second option on the page to tell it from.
+ * The icon a page carries in the sidebar. No pips: there is no second option on
+ * the page to tell it from.
  */
 const pageIcons: Record<string, IconName> = Object.fromEntries([
 	...Object.values(remoteAccess).map((listing) => [

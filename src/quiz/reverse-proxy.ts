@@ -10,8 +10,8 @@ import {
 type Authentication = "sso" | "password" | "none";
 
 /**
- * What a certificate proved in DNS costs to set up, the DNS challenge being the
- * only one open to a service the internet cannot reach.
+ * What a certificate costs to set up, the DNS challenge being the only one open
+ * to a service the internet cannot reach.
  */
 type DnsChallenge =
 	/** A line of configuration: every provider is already in there. */
@@ -23,42 +23,30 @@ type DnsChallenge =
 	/** Certbot beside it, a second tool with a configuration of its own. */
 	| "external";
 
-/**
- * Only worth running when the resolved remote access method serves no HTTPS of
- * its own, which is what earns it the "reverse-proxy" guide over there.
- */
+/** Only worth running when the remote access method serves no HTTPS of its own. */
 export type ReverseProxy = {
 	slug: string;
 	/** Which tool it is, for people who already know one of them. */
 	family: "caddy" | "traefik" | "nginx" | "tailscale" | "zoraxy";
 	/**
 	 * The ways the proxy can be told about a service, each a capability and never
-	 * a commitment: Traefik and Caddy Docker Proxy read labels and a config file
-	 * both. Between them they have to cover every option, or the question that
-	 * offers them leaves someone with no answer to give.
+	 * a commitment. Between them they have to cover every option, or the question
+	 * offering them leaves someone with no answer to give.
 	 */
 	hasWebInterface: boolean;
 	hasConfigFile: boolean;
 	readsContainerLabels: boolean;
 	isSetUpWithACommand: boolean;
 	isDependentOnThirdParty: boolean;
-	/**
-	 * Where it can run, a capability like the ways above and not a commitment:
-	 * most of these ship as a package and as an image both, and one option
-	 * covers the two.
-	 */
+	/** A capability like the ways above: most ship as a package and as an image. */
 	runsNatively: boolean;
 	runsInDocker: boolean;
 	/** No bandwidth cap or terms of service getting in the way of video. */
 	isHighBandwidthFriendly: boolean;
 	needsDomain: boolean;
 	dnsChallenge: DnsChallenge;
-	/** How far it goes in front of a service, before the request reaches it. */
 	authentication: Authentication;
-	/**
-	 * Serves one machine name on three ports, so a second service goes on a path
-	 * rather than an address of its own.
-	 */
+	/** One machine name on three ports, so a second service goes on a path. */
 	servesOneAddress: boolean;
 };
 
@@ -77,9 +65,9 @@ const caddy = {
 } as const;
 
 /**
- * Declaration order breaks ties, simplest first: a beginner with no habit of
- * any of them is better served by a Caddyfile than by a name they don't know,
- * and by a package than by an image to keep building.
+ * Declaration order breaks ties, simplest first: a beginner is better served by
+ * a Caddyfile than by a package they don't know, and by a package than by an
+ * image to keep building.
  */
 const reverseProxies = [
 	{
@@ -97,8 +85,7 @@ const reverseProxies = [
 		slug: "caddy-in-docker",
 		runsNatively: false,
 		runsInDocker: true,
-		// Nothing to swap inside an image: the module goes in through xcaddy, in
-		// a Dockerfile of your own
+		// Nothing to swap inside an image: xcaddy, in a Dockerfile of your own
 		dnsChallenge: "custom-build",
 	},
 	{
@@ -208,10 +195,7 @@ export type ReverseProxySlug = (typeof reverseProxies)[number]["slug"];
 const hasDnsChallenge = (one: ReverseProxy) =>
 	one.dnsChallenge === "included" || one.dnsChallenge === "extra-package";
 
-/**
- * What the proxy is like, whatever the quiz happened to ask, so the result reads
- * as a description rather than a summary of the answers.
- */
+/** Written without knowing what was asked: a description, not a summary. */
 const axes: readonly Axis<ReverseProxy>[] = [
 	{
 		id: "high-bandwidth",
@@ -233,9 +217,8 @@ const axes: readonly Axis<ReverseProxy>[] = [
 	},
 	{
 		id: "dns-challenge",
-		// The DNS challenge, never named as such: what it buys is a certificate
-		// for a name that answers nowhere public, which is what a reader has to
-		// recognise their own case in
+		// Never named as such: what a reader recognises is the case it buys them,
+		// a certificate for a name that answers nowhere public
 		applies: (one) => one.needsDomain,
 		holds: hasDnsChallenge,
 		pro: "HTTPS for private services",
@@ -254,8 +237,8 @@ const axes: readonly Axis<ReverseProxy>[] = [
 	},
 	{
 		id: "authentication",
-		// Not open to everyone, the service still has its own accounts: the con is
-		// that they are the only gate, and few services treat that as their job
+		// The service still has its own accounts: the con is that they are the
+		// only gate, and few services treat that as their job
 		holds: (one) => one.authentication !== "none",
 		con: "Nothing in front: each service is left to guard itself",
 	},
@@ -312,8 +295,8 @@ const questions = [
 	{
 		id: "already-used",
 		kind: "fact",
-		// Knowing one is what counts, not running one today: the syntax and the
-		// habits are what carry over. Every family needs an answer of its own.
+		// Knowing one is what counts, not running one today: syntax and habits
+		// carry over. Every family needs an answer of its own.
 		question: "Do you already know one of these?",
 		answers: [
 			{
@@ -343,8 +326,7 @@ const questions = [
 	{
 		id: "deployment",
 		kind: "preference",
-		// Rules out only the ones that ship one way: the tools running either
-		// way stay on the table whichever answer comes back
+		// Rules out only the ones that ship one way
 		question: "How will you run it?",
 		answers: [
 			{
@@ -380,8 +362,6 @@ const questions = [
 	{
 		id: "open-internet",
 		kind: "fact",
-		// Asked only where it decides something: a pool where every option has
-		// the DNS challenge to hand is one the engine never brings this to
 		question: "Will all your services be reachable from the open internet?",
 		help: "Reachable means anyone can open its address in a browser, with nothing to install first. One that only answers at home, or once a VPN app is running, is not.",
 		answers: [
@@ -459,9 +439,8 @@ const questions = [
 
 /**
  * No `worseThan` here. What an image of your own costs is only worth anything
- * against a service the internet cannot reach, and whether the reader has one
- * is a question, not a guess: ruling the option out before asking sends home
- * whoever opened a port and never needed the DNS challenge at all.
+ * against a service the internet cannot reach, and ruling the option out before
+ * asking sends home whoever never needed the DNS challenge at all.
  */
 export const reverseProxyQuiz: Quiz<ReverseProxy> = {
 	options: reverseProxies,
@@ -471,8 +450,6 @@ export const reverseProxyQuiz: Quiz<ReverseProxy> = {
 /**
  * Cloudflare is deliberately absent. The orange cloud maps every proxied
  * hostname to one origin address, so something at home still dispatches by Host
- * header: it goes in front of a reverse proxy, it is not one. Tunnel does route
- * hostnames to local services and serves HTTPS itself, so it lives in the remote
- * access quiz and nobody who picks it is sent here. Zero Trust is an
- * authentication layer on top of either.
+ * header: it goes in front of a reverse proxy, it is not one. Tunnel is in the
+ * remote access quiz, and Zero Trust is an authentication layer on top of either.
  */

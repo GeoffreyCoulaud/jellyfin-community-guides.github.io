@@ -24,7 +24,6 @@ type Props<O extends Option> = {
 	onAnswer: (picked: Answer<O>) => void;
 };
 
-/** The question on the table, under the answers still leading somewhere. */
 export const Asking = <O extends Option>({
 	question,
 	pool,

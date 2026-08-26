@@ -12,16 +12,13 @@ import { decodeState, encodeState, type Cited } from "../../quiz/share";
 const write = (cited: readonly Cited[]) => {
 	const url = new URL(window.location.href);
 	url.search = new URLSearchParams([...cited]).toString();
-	// replaceState: the back button belongs to the page the reader came from,
-	// the recap being where answers are taken back
+	// The back button belongs to the page the reader came from, not to answers
 	window.history.replaceState(null, "", url);
 };
 
 /**
- * The quiz state, with the address bar holding what was answered so a result
- * can be sent to someone. Read on mount rather than at the first render: the
- * page is built ahead of time, and a first render reading the address would not
- * match the HTML it hydrates.
+ * Read on mount rather than at the first render: the page is built ahead of
+ * time, and a first render reading the address would not match what it hydrates.
  */
 export const useSharedState = <O extends Option>(
 	quiz: Quiz<O>,
@@ -33,8 +30,7 @@ export const useSharedState = <O extends Option>(
 		const params = [...new URL(window.location.href).searchParams];
 		if (params.length === 0) return;
 		const restored = decodeState(quiz, params, traits);
-		// Nothing this quiz can read, so nothing to restore: dropping it says as
-		// much, rather than leaving an address claiming answers nobody gave
+		// Rather than leave an address claiming answers nobody gave
 		if (restored === undefined) write([]);
 		else setState(restored);
 	}, []);

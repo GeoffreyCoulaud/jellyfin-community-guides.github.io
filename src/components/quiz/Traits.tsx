@@ -2,13 +2,11 @@ import type { Option, Step, Trait } from "../../quiz/engine";
 import "./traits.css";
 
 type ConProps<O extends Option> = {
-	/** Whose card it is: a con is worded off the option it was read on. */
 	option: O;
 	trait: Trait<O>;
 	onRefuse: (refused: Step<O>) => void;
 };
 
-/** A con, and the way out of it: refusing it is asking for the options without it. */
 const ConRow = <O extends Option>({ option, trait, onRefuse }: ConProps<O>) => {
 	const refuse = trait.keep;
 
@@ -35,21 +33,15 @@ const ConRow = <O extends Option>({ option, trait, onRefuse }: ConProps<O>) => {
 };
 
 type Props<O extends Option> = {
-	/** Whose card it is, and so what a refused con is cited by in a link. */
+	/** Whose card it is: a refused con is cited by the option it was read on. */
 	option: O;
 	traits: readonly Trait<O>[];
-	/** Under the name of an option, or under a heading naming several. */
 	level: "h3" | "h4";
-	/** What the Dealbreaker buttons are for, wherever that is worth saying. */
 	note?: string;
 	onDealbreaker: (refused: Step<O>) => void;
 };
 
-/**
- * Pros and cons face to face. A side with nothing on it is left out rather than
- * headed and empty: a column reading "Cons" over blank space says there are
- * none in the least convincing way there is.
- */
+/** A side with nothing on it is left out rather than headed and empty. */
 export const Traits = <O extends Option>({
 	option,
 	traits,

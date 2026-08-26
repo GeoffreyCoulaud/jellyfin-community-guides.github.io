@@ -7,7 +7,6 @@ type Props<O extends Option> = {
 	onDrop: (step: Step<O>) => void;
 };
 
-/** Every option is ruled out, so a step has to give. */
 export const Stuck = <O extends Option>({ blocking, onDrop }: Props<O>) => (
 	<section>
 		<h2 className="quiz-title">Nothing does all of that</h2>

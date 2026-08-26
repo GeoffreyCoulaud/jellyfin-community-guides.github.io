@@ -11,7 +11,6 @@ type Props<O extends Option> = {
 	onDealbreaker: (refused: Step<O>) => void;
 };
 
-/** The one option left standing, and what it is like. */
 export const Result = <O extends Option>({
 	option,
 	doc,
@@ -24,7 +23,6 @@ export const Result = <O extends Option>({
 
 	return (
 		<section>
-			{/* The name is the link to the guide, so nothing is asked for twice */}
 			<h2 className="quiz-title quiz-result-title">
 				<Emblem emblem={match.emblem} size="title" withPips />
 				<a href={match.href}>{match.title}</a>

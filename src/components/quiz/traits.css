@@ -1,8 +1,5 @@
-/* One option's pros against its cons, on the screen naming one of them. */
-
-/* Pros and cons face to face, stacked once there is no room for two. auto-fit
-   rather than two tracks: a card with only pros on it gets the whole width
-   instead of a column of white space beside it. */
+/* auto-fit rather than two tracks: a card with only pros on it gets the whole
+   width instead of a column of white space beside it. */
 .quiz-columns {
 	display: grid;
 	gap: 1.5rem;

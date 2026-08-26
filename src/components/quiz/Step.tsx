@@ -24,7 +24,6 @@ export const kindOf = <O extends Option>(question: Question<O> | undefined) =>
 			? "Fact"
 			: "Preference";
 
-/** A step as a row: what it was, and what kind of thing it was. */
 export const StepRow = <O extends Option>({ step }: { step: Step<O> }) => (
 	<>
 		<Badge>{kindOf(step.question)}</Badge>

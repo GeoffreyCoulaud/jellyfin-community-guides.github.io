@@ -10,8 +10,8 @@ type RowProps<O extends Option> = {
 	onRewind: () => void;
 };
 
-// The row is the click target, the pencil only the keyboard's way in: text
-// inside a button cannot be selected, which is what bug reports are made of.
+// The row is the click target and the pencil only the keyboard's way in: text
+// inside a button cannot be selected.
 const RecapRow = <O extends Option>({ step, onRewind }: RowProps<O>) => (
 	<li
 		onClick={() => {
@@ -31,7 +31,6 @@ const RecapRow = <O extends Option>({ step, onRewind }: RowProps<O>) => (
 
 type Props<O extends Option> = {
 	steps: readonly Step<O>[];
-	/** Out of the way once the quiz has stopped asking, in plain sight while it asks. */
 	folded: boolean;
 	onRewind: (index: number) => void;
 };
