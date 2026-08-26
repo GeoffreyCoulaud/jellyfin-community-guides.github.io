@@ -11,15 +11,16 @@ import {
 	type Trait,
 } from "../../quiz/engine";
 import { Asking } from "./Asking";
+import { Comparison } from "./Comparison";
 import { Progress } from "./Progress";
 import { Recap } from "./Recap";
 import { Result } from "./Result";
-import { Shortlist } from "./Shortlist";
 import { givesFirst } from "./Step";
 import { Stuck } from "./Stuck";
 import { useSharedState } from "./useSharedState";
 import type { Doc } from "./Doc";
-// The whole quiz is drawn from here, so this is the one file to bring its styles
+// What every screen of the quiz is drawn on. The screens themselves each bring
+// their own, so this file holds only what more than one of them wears.
 import "./quiz.css";
 
 export type { Doc };
@@ -80,7 +81,7 @@ export const QuizRunner = <O extends Option>({
 			)}
 
 			{outcome.status === "undecided" && (
-				<Shortlist
+				<Comparison
 					options={outcome.options}
 					doc={doc}
 					guides={guides}

@@ -1,0 +1,153 @@
+/* The options left as a grid, one column each, one row per thing said. */
+
+/* Read for or against down a column, one row per thing said about any of them.
+   Wider than the room it has the table scrolls, the labels staying put. */
+.quiz-matrix-scroll {
+	overflow-x: auto;
+}
+
+/* Left to size itself: every column is as wide as what it holds, so two options
+   are two columns and not two slivers against a page of white space. Separate
+   borders rather than collapsed, a collapsed border leaving the sticky first
+   column behind when the rest scrolls under it. */
+.quiz-matrix {
+	--radius: 0.5rem;
+	border-collapse: separate;
+	border-spacing: 0;
+}
+
+.quiz-matrix th,
+.quiz-matrix td {
+	padding: 0.4rem 0.5rem;
+	text-align: center;
+	vertical-align: middle;
+	border-right: 1px solid var(--sl-color-gray-5);
+	border-bottom: 1px solid var(--sl-color-gray-5);
+}
+
+/* A section is the block, not the table: the cells close it off to the left and
+   over the first row of it, the rest of the sides being every cell's own. What
+   sits between two blocks is a heading with no border at all. */
+.quiz-matrix tbody tr > *:first-child {
+	border-left: 1px solid var(--sl-color-gray-5);
+}
+
+.quiz-matrix tbody .quiz-section + tr > * {
+	border-top: 1px solid var(--sl-color-gray-5);
+}
+
+/* A cell fills its corner square unless told otherwise, and a filled square
+   under a rounded corner is what makes a rounded corner look broken. */
+.quiz-matrix .quiz-section + tr > *:first-child {
+	border-top-left-radius: var(--radius);
+}
+
+.quiz-matrix .quiz-section + tr > *:last-child {
+	border-top-right-radius: var(--radius);
+}
+
+.quiz-matrix tr:has(+ .quiz-section) > *:first-child,
+.quiz-matrix tbody tr:last-child > *:first-child {
+	border-bottom-left-radius: var(--radius);
+}
+
+.quiz-matrix tr:has(+ .quiz-section) > *:last-child,
+.quiz-matrix tbody tr:last-child > *:last-child {
+	border-bottom-right-radius: var(--radius);
+}
+
+/* Nothing on it but the emblems: no rule under them, and no band. */
+.quiz-matrix thead th {
+	padding-bottom: 0.7rem;
+	border: 0;
+}
+
+/* All a column is headed by, and so drawn a size up from the emblems that only
+   sit beside a name. */
+.quiz-matrix thead .emblem {
+	--emblem-size: 2rem;
+}
+
+/* Pinned: a dozen options left is a table that scrolls, and a mark with no
+   words in reach of it says nothing. Opaque, or the marks read through it. */
+.quiz-matrix tbody th[scope="row"] {
+	position: sticky;
+	left: 0;
+	/* Room to read on, and no more: the column asks for its longest label on
+	   one line and gives that back, line by line, to whatever the marks need */
+	min-width: 14rem;
+	font-weight: normal;
+	text-align: left;
+	color: var(--sl-color-gray-2);
+	background: var(--sl-color-bg);
+}
+
+/* Pinned with the labels below it, or its own corner slides out from over them. */
+.quiz-matrix thead th:first-child {
+	position: sticky;
+	left: 0;
+	background: var(--sl-color-bg);
+}
+
+/* Every other row, faintly: enough to follow one across, not enough to read as
+   a second kind of row. Headings are rows like any other here, and take their
+   turn in the banding rather than sitting outside it. */
+.quiz-matrix tbody tr:nth-child(odd) > * {
+	background: color-mix(in srgb, var(--sl-color-gray-6) 45%, var(--sl-color-bg));
+}
+
+/* What kind of thing the rows under it are: pros, cons, and the pages some of
+   these options want read alongside them. Carried by the weight of the words
+   rather than by a rule of its own. */
+.quiz-matrix tbody tr.quiz-section > th {
+	text-align: left;
+	font-weight: 600;
+	color: var(--sl-color-white);
+	background: none;
+	border: 0;
+}
+
+/* The marks the rest of the quiz reads its pros and cons by. */
+.quiz-mark-pro {
+	color: var(--sl-color-text-accent);
+}
+
+.quiz-mark-con {
+	color: var(--sl-color-gray-3);
+}
+
+/* Ahead of the words it lets you refuse, on the line with them. */
+.quiz-matrix tbody button {
+	display: inline-block;
+	vertical-align: middle;
+	margin-right: 0.4rem;
+	/* Sized off the text it sits in, the table's size being the page's */
+	width: 1.7em;
+	height: 1.5em;
+	padding: 0;
+	font: inherit;
+	line-height: 1;
+	color: var(--sl-color-gray-3);
+	background: none;
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.25rem;
+	cursor: pointer;
+}
+
+.quiz-matrix tbody button:hover {
+	color: var(--sl-color-white);
+	border-color: var(--sl-color-text-accent);
+}
+
+/* An empty cell says "no" to whoever sees it and nothing at all to whoever
+   hears it, hence the word hidden inside it. */
+.quiz-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}

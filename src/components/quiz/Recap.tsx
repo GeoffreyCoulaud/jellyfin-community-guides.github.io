@@ -1,5 +1,6 @@
 import type { Option, Step } from "../../quiz/engine";
 import { key, StepRow } from "./Step";
+import "./recap.css";
 
 /** A click ending a drag over the text is someone copying it, not answering. */
 const selecting = () => (window.getSelection()?.toString().length ?? 0) > 0;

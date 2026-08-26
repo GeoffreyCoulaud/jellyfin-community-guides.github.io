@@ -1,0 +1,60 @@
+/* How far the quiz has got: one bar, and the pool it counts. */
+
+/* The bar over the count it belongs to, one block. */
+.quiz-progress {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.quiz-bar {
+	height: 0.3rem;
+	border-radius: 999px;
+	background: var(--sl-color-gray-6);
+	overflow: hidden;
+}
+
+.quiz-bar-fill {
+	display: block;
+	height: 100%;
+	background: var(--sl-color-text-accent);
+	transition: width 0.2s ease;
+}
+
+.quiz-pool summary {
+	cursor: pointer;
+	color: var(--sl-color-gray-3);
+	font-size: var(--sl-text-sm);
+}
+
+.quiz-pool ul {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+	margin: 0.5rem 0 0;
+	font-size: var(--sl-text-sm);
+}
+
+.quiz-pool li {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--sl-color-gray-2);
+}
+
+.quiz-pool .emblem {
+	--emblem-size: 1.25rem;
+}
+
+/* Ruled out, still listed: what the bar is counting is worth seeing by name. */
+.quiz-pool-out {
+	color: var(--sl-color-gray-4);
+}
+
+.quiz-pool-out span {
+	text-decoration: line-through;
+}
+
+.quiz-pool-out .emblem {
+	opacity: 0.45;
+}

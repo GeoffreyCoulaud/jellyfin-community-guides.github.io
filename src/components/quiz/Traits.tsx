@@ -1,4 +1,5 @@
 import type { Option, Step, Trait } from "../../quiz/engine";
+import "./traits.css";
 
 type ConProps<O extends Option> = {
 	/** Whose card it is: a con is worded off the option it was read on. */

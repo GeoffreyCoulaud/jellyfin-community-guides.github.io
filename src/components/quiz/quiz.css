@@ -27,68 +27,9 @@
 	color: var(--sl-color-white);
 }
 
-.quiz-note,
-.quiz-eyebrow,
-.quiz-pool summary {
+.quiz-note {
 	color: var(--sl-color-gray-3);
 	font-size: var(--sl-text-sm);
-}
-
-/* The bar over the count it belongs to, one block. */
-.quiz-progress {
-	display: flex;
-	flex-direction: column;
-	gap: 0.4rem;
-}
-
-.quiz-bar {
-	height: 0.3rem;
-	border-radius: 999px;
-	background: var(--sl-color-gray-6);
-	overflow: hidden;
-}
-
-.quiz-bar-fill {
-	display: block;
-	height: 100%;
-	background: var(--sl-color-text-accent);
-	transition: width 0.2s ease;
-}
-
-.quiz-pool summary {
-	cursor: pointer;
-}
-
-.quiz-pool ul {
-	display: flex;
-	flex-direction: column;
-	gap: 0.3rem;
-	margin: 0.5rem 0 0;
-	font-size: var(--sl-text-sm);
-}
-
-.quiz-pool li {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	color: var(--sl-color-gray-2);
-}
-
-.quiz-pool .emblem {
-	--emblem-size: 1.25rem;
-}
-
-/* Ruled out, still listed: what the bar is counting is worth seeing by name. */
-.quiz-pool-out {
-	color: var(--sl-color-gray-4);
-}
-
-.quiz-pool-out span {
-	text-decoration: line-through;
-}
-
-.quiz-pool-out .emblem {
-	opacity: 0.45;
 }
 
 .quiz-title {
@@ -100,18 +41,11 @@
 
 /* The emblem leads, the name follows it. Nothing under either but blocks
    bringing their own margin, so they keep none of their own. */
-.quiz-result-title,
-.quiz-subtitle {
+.quiz-result-title {
 	display: flex;
 	align-items: center;
 	gap: 0.6rem;
 	margin-bottom: 0;
-}
-
-/* One rung down from a result: one option among several, or a heading over the
-   lot of them. */
-.quiz-subtitle {
-	font-size: var(--sl-text-h5);
 }
 
 .quiz-heading {
@@ -126,42 +60,7 @@
 	margin-top: 1.75rem;
 }
 
-/* Pros and cons face to face, stacked once there is no room for two. auto-fit
-   rather than two tracks: a card with only pros on it gets the whole width
-   instead of a column of white space beside it. */
-.quiz-columns {
-	display: grid;
-	gap: 1.5rem;
-	align-items: start;
-	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-}
-
-/* One card per option left standing, all the same, none of them leading. Named
-   under `.quiz` to outrank the list reset at the top of this file. */
-.quiz .quiz-cards {
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
-	margin-top: 1.75rem;
-}
-
-.quiz-card {
-	padding: 1rem;
-	border: 1px solid var(--sl-color-gray-5);
-	border-radius: 0.5rem;
-}
-
-/* What holds whichever one you pick, filled rather than outlined: it is not a
-   card among the cards, it is what all of them say. */
-.quiz-shared {
-	padding: 1rem;
-	border-radius: 0.5rem;
-	background: var(--sl-color-gray-6);
-}
-
 /* Under a heading of its own, a block is closer to it than to a page of prose. */
-.quiz-card .quiz-block,
-.quiz-card > .quiz-note,
 .quiz-block > .quiz-block {
 	margin-top: 0.75rem;
 }
@@ -207,55 +106,6 @@
 	background: var(--sl-color-gray-6);
 }
 
-.quiz-traits {
-	display: flex;
-	flex-direction: column;
-	gap: 0.15rem;
-}
-
-.quiz-traits li {
-	color: var(--sl-color-gray-2);
-	line-height: 1.5;
-}
-
-.quiz-pro::before {
-	content: "✓ ";
-	color: var(--sl-color-text-accent);
-}
-
-.quiz-con {
-	display: flex;
-	gap: 0.5rem;
-	align-items: baseline;
-	justify-content: space-between;
-}
-
-.quiz-con::before {
-	content: "✗ ";
-	color: var(--sl-color-gray-3);
-}
-
-.quiz-con span {
-	flex: 1;
-}
-
-.quiz-con button {
-	flex: none;
-	font: inherit;
-	font-size: var(--sl-text-xs);
-	color: var(--sl-color-gray-2);
-	background: none;
-	border: 1px solid var(--sl-color-gray-5);
-	border-radius: 0.25rem;
-	padding: 0.15rem 0.5rem;
-	cursor: pointer;
-}
-
-.quiz-con button:hover {
-	color: var(--sl-color-white);
-	border-color: var(--sl-color-text-accent);
-}
-
 /* Same row as the recap, with the action spelled out: a row showing nothing but
    an answer reads as an answer, which is what made this screen unclear. */
 .quiz-swaps button {
@@ -286,72 +136,4 @@
 .quiz-links li:not(:has(.emblem))::before {
 	content: "→";
 	color: var(--sl-color-gray-3);
-}
-
-.quiz-badge {
-	display: inline-block;
-	vertical-align: middle;
-	margin-right: 0.4rem;
-	padding: 0 0.3rem;
-	font-weight: 500;
-	line-height: 1.5;
-	border: 1px solid var(--sl-color-gray-5);
-	border-radius: 0.2rem;
-	font-size: var(--sl-text-xs);
-	letter-spacing: 0.05em;
-	text-transform: uppercase;
-	color: var(--sl-color-gray-3);
-}
-
-.quiz-recap summary {
-	cursor: pointer;
-	color: var(--sl-color-gray-3);
-	font-size: var(--sl-text-sm);
-}
-
-.quiz-recap ol {
-	display: flex;
-	flex-direction: column;
-	gap: 0.15rem;
-	margin: 0.5rem 0 0;
-	padding: 0;
-	list-style: none;
-	font-size: var(--sl-text-sm);
-}
-
-.quiz-recap li {
-	display: flex;
-	gap: 0.4rem;
-	align-items: baseline;
-	padding: 0.25rem 0.4rem;
-	border-radius: 0.25rem;
-	color: var(--sl-color-gray-2);
-	cursor: pointer;
-}
-
-.quiz-recap li:hover {
-	background: var(--sl-color-gray-6);
-	color: var(--sl-color-white);
-}
-
-.quiz-recap-text {
-	flex: 1;
-}
-
-/* Dim until the row is pointed at, but never gone: a hidden pencil is one no
-   touchscreen ever finds. */
-.quiz-edit {
-	flex: none;
-	width: auto;
-	padding: 0;
-	font: inherit;
-	color: var(--sl-color-gray-4);
-	background: none;
-	border: 0;
-	cursor: pointer;
-}
-
-.quiz-recap li:hover .quiz-edit,
-.quiz-edit:focus-visible {
-	color: var(--sl-color-text-accent);
 }

@@ -1,0 +1,34 @@
+/* The screen that stands several options side by side. */
+
+/* Worded as what it does rather than drawn as a control: what it opens is a
+   footnote to the grid, not half of it. */
+.quiz-reveal {
+	flex: none;
+	margin-block: 0.5rem;
+	padding: 0;
+	font: inherit;
+	font-size: var(--sl-text-sm);
+	color: var(--sl-color-gray-3);
+	background: none;
+	border: 0;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.quiz-reveal:hover {
+	color: var(--sl-color-white);
+}
+
+
+/* The options again, plainly, in the order the columns come in. */
+.quiz .quiz-picks {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.quiz-picks a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+}

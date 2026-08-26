@@ -127,48 +127,6 @@ export const describe = <O extends Option>(
 			: [{ id: axis.id, label, tone: "con", keep: axis.holds }];
 	});
 
-/** Two cards saying the same thing: same axis, same side, same words. */
-const worded = <O extends Option>(trait: Trait<O>) =>
-	`${trait.id}/${trait.tone}/${trait.label}`;
-
-export type Comparison<O extends Option> = {
-	/** Worded the same on every card left, so it tells none of them apart. */
-	shared: Trait<O>[];
-	/** One entry per option, in pool order: what only that card says. */
-	apart: { option: O; traits: Trait<O>[] }[];
-};
-
-/**
- * What the options left say alike, against what each says for itself. Said once
- * over the lot, a shared trait stops being read as a reason to pick one of
- * them; what is left on the cards is what there is to weigh, which is the whole
- * of the job once no question can narrow the pool further.
- */
-export const compare = <O extends Option>(
-	pool: readonly O[],
-	traits: (option: O) => readonly Trait<O>[],
-): Comparison<O> => {
-	const cards = pool.map((option) => ({
-		option,
-		traits: [...traits(option)],
-	}));
-	const [first, ...rest] = cards;
-	if (first === undefined) return { shared: [], apart: [] };
-	const shared = first.traits.filter((trait) =>
-		rest.every((card) =>
-			card.traits.some((one) => worded(one) === worded(trait)),
-		),
-	);
-	const alike = new Set(shared.map(worded));
-	return {
-		shared,
-		apart: cards.map((card) => ({
-			option: card.option,
-			traits: card.traits.filter((trait) => !alike.has(worded(trait))),
-		})),
-	};
-};
-
 const outcomes = <O extends Option>(
 	question: Question<O>,
 	pool: readonly O[],

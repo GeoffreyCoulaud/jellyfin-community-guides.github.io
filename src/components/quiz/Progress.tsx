@@ -6,6 +6,7 @@ import {
 } from "../../quiz/engine";
 import { Emblem } from "../Emblem";
 import type { Doc } from "./Doc";
+import "./progress.css";
 
 type Props<O extends Option> = {
 	quiz: Quiz<O>;

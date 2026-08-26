@@ -1,4 +1,5 @@
 import type { Option, Question, Step } from "../../quiz/engine";
+import "./recap.css";
 
 export const key = <O extends Option>(step: Step<O>) =>
 	`${step.question?.id ?? step.option?.slug}: ${step.id}`;

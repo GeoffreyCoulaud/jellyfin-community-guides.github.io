@@ -1,0 +1,61 @@
+/* One option's pros against its cons, on the screen naming one of them. */
+
+/* Pros and cons face to face, stacked once there is no room for two. auto-fit
+   rather than two tracks: a card with only pros on it gets the whole width
+   instead of a column of white space beside it. */
+.quiz-columns {
+	display: grid;
+	gap: 1.5rem;
+	align-items: start;
+	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+
+.quiz-traits {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.quiz-traits li {
+	color: var(--sl-color-gray-2);
+	line-height: 1.5;
+}
+
+.quiz-pro::before {
+	content: "✓ ";
+	color: var(--sl-color-text-accent);
+}
+
+.quiz-con {
+	display: flex;
+	gap: 0.5rem;
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.quiz-con::before {
+	content: "✗ ";
+	color: var(--sl-color-gray-3);
+}
+
+.quiz-con span {
+	flex: 1;
+}
+
+.quiz-con button {
+	flex: none;
+	font: inherit;
+	font-size: var(--sl-text-xs);
+	color: var(--sl-color-gray-2);
+	background: none;
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.25rem;
+	padding: 0.15rem 0.5rem;
+	cursor: pointer;
+}
+
+.quiz-con button:hover {
+	color: var(--sl-color-white);
+	border-color: var(--sl-color-text-accent);
+}
