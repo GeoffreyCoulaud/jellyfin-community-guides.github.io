@@ -119,11 +119,22 @@ const outcomes = <O extends Option>(
 	pool: readonly O[],
 ) => question.answers.map((answer) => pool.filter(answer.keep));
 
-/** How many options are left after the least helpful answer. */
+/**
+ * How many options are left after the least helpful answer that rules any out.
+ * The way out of a question keeps the whole pool, so counting it would score
+ * every question offering one at the pool it was asked on, and send them all to
+ * the back however well the rest of the question cuts. A question with nothing
+ * but ways out never gets here: it does not split the pool.
+ */
 const worstCase = <O extends Option>(
 	question: Question<O>,
 	pool: readonly O[],
-) => Math.max(...outcomes(question, pool).map((left) => left.length));
+) =>
+	Math.max(
+		...outcomes(question, pool)
+			.map((left) => left.length)
+			.filter((left) => left < pool.length),
+	);
 
 /** Two answers keeping the same options say the same thing. */
 const signature = <O extends Option>(options: readonly O[]) =>
@@ -255,7 +266,8 @@ export const resolve = <O extends Option>(
 	if (nextQuestion(quiz, state)) return { status: "asking" } as const;
 	const [first, ...rest] = state.pool;
 	if (first === undefined) return { status: "over-constrained" } as const;
-	if (rest.length === 0) return { status: "resolved", option: first } as const;
+	if (rest.length === 0)
+		return { status: "resolved", option: first } as const;
 	return { status: "undecided", options: state.pool } as const;
 };
 

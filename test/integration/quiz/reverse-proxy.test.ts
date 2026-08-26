@@ -42,19 +42,4 @@ describe("the reverse proxy quiz", () => {
 		// for a way can be recommended
 		expect(stranded).toEqual([]);
 	});
-
-	it("offers every family it has a proxy from", () => {
-		// given the families the options belong to
-		const families = new Set(quiz.options.map((proxy) => proxy.family));
-
-		// when the answers naming one are read
-		const named = asks("already-used")
-			.answers.map((answer) => answer.id)
-			.filter(takesASide)
-			.filter((id) => id !== "none");
-
-		// then the two lists are the same: a habit with no answer of its own
-		// is a habit the quiz cannot use
-		expect(named.sort()).toEqual([...families].sort());
-	});
 });

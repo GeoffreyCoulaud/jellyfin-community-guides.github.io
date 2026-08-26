@@ -21,20 +21,16 @@ export type IconName =
 	| "nginx"
 	| "npm"
 	| "pangolin"
+	| "swag"
 	| "tailscale"
 	| "traefik"
+	| "wg-easy"
 	| "wireguard"
 	| "zerotier"
 	| "zoraxy";
 
 export type PipName =
-	| "cloud"
-	| "docker"
-	| "home"
-	| "key"
-	| "labels"
-	| "paid"
-	| "vps";
+	"cloud" | "docker" | "home" | "key" | "labels" | "paid" | "public" | "vps";
 
 export type Emblem = { icon: IconName; pips?: readonly PipName[] };
 
@@ -46,34 +42,48 @@ const pipLabels: Record<PipName, string> = {
 	key: "needs a licence key",
 	labels: "routed by container labels",
 	paid: "costs money every month",
+	public: "published on a public address",
 	vps: "runs on a server you rent",
 };
 
-const iconFiles = import.meta.glob<string>("./svg/*.svg", {
+/** Whatever a project publishes its mark as: not every one of them draws one. */
+const logoFiles = import.meta.glob<string>("./logos/*.{svg,png}", {
 	eager: true,
 	query: "?url",
 	import: "default",
 });
 
+/** Drawn here, and masked to the page's text colour, so these stay vector. */
 const pipFiles = import.meta.glob<string>("./pips/*.svg", {
 	eager: true,
 	query: "?url",
 	import: "default",
 });
 
+/** Keyed by the file name without its extension, which is the name we cite. */
+const byName = (files: Record<string, string>) =>
+	Object.fromEntries(
+		Object.entries(files).map(([path, url]) => [
+			path.replace(/^.*\//, "").replace(/\.\w+$/, ""),
+			url,
+		]),
+	);
+
 /** A name with no file behind it is a build error, never a blank square. */
-const fileIn =
-	<Name extends string>(files: Record<string, string>, directory: string) =>
-	(name: Name) => {
-		const url = files[`./${directory}/${name}.svg`];
+const fileIn = <Name extends string>(
+	files: Record<string, string>,
+	directory: string,
+) => {
+	const urls = byName(files);
+	return (name: Name) => {
+		const url = urls[name];
 		if (url === undefined)
-			throw new Error(
-				`Missing icon file src/icons/${directory}/${name}.svg`,
-			);
+			throw new Error(`Missing file src/icons/${directory}/${name}.*`);
 		return url;
 	};
+};
 
-export const iconUrl = fileIn<IconName>(iconFiles, "svg");
+export const iconUrl = fileIn<IconName>(logoFiles, "logos");
 export const pipUrl = fileIn<PipName>(pipFiles, "pips");
 
 export const pipLabel = (name: PipName) => pipLabels[name];

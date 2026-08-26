@@ -78,6 +78,17 @@ describe("nextQuestion", () => {
 		expect(asked(quiz, startQuiz(quiz))).toBe("temperature");
 	});
 
+	it("judges a question on its answers that rule something out", () => {
+		// given a question whose way out keeps everything, declared second
+		const quiz = quizOf(options, [rarity, openEnded]);
+
+		// when the next question is picked
+		// then the way out is not held against it: what it does when answered
+		// is what it is worth, and it leaves two behind where the other
+		// leaves three
+		expect(asked(quiz, startQuiz(quiz))).toBe("temperature");
+	});
+
 	it("breaks a tie on the order the questions are declared", () => {
 		// given two questions splitting the pool down the middle
 		const quiz = quizOf(options, [sweetness, temperature]);

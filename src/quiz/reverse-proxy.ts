@@ -6,8 +6,17 @@ import {
 	type Quiz,
 } from "./engine";
 
-/** A password of its own, a login page it delegates to, or nothing at all. */
-type Authentication = "sso" | "password" | "none";
+/**
+ * What it can be asked to put in front of a service. Nothing in front is not on
+ * the list: every one of these can leave a service open. Whether the service
+ * behind takes the portal's word for who is there is its own business, and no
+ * proxy answers for it.
+ */
+type Authentication =
+	/** Forward auth to Authelia and the like: one login page for all of them. */
+	| "sso"
+	/** A password of its own, and nothing to hand a login page over to. */
+	| "password";
 
 /**
  * What a certificate costs to set up, the DNS challenge being the only one open
@@ -23,11 +32,42 @@ type DnsChallenge =
 	/** Certbot beside it, a second tool with a configuration of its own. */
 	| "external";
 
-/** Only worth running when the remote access method serves no HTTPS of its own. */
+/**
+ * What it takes to let websockets through. Jellyfin holds a session open on one
+ * and warns in its own documentation that not every proxy allows them by
+ * default: miss the step and films still play, while everything keeping the
+ * clients in step with the server quietly stops.
+ */
+type Websockets =
+	/** Upgraded on their own, with nothing to say about it anywhere. */
+	| "automatic"
+	/** A box to tick on the route, in the interface that declared it. */
+	| "a-setting"
+	/** Headers to write into the route by hand. */
+	| "directives";
+
+/**
+ * What it takes to shut out the scanners that find any address published for
+ * long enough. Two things behind one field: banning whoever keeps failing,
+ * which takes something reading the log, and refusing a list of addresses and
+ * countries, which does not. Not "directives" like the websockets above: the
+ * banning half has no directive in any of these, it is a second daemon.
+ */
+type AbuseBlocking =
+	/** Fail2ban in the image, jails already watching when you start it. */
+	| "included"
+	/** Addresses, countries and rates, filled in from its own interface. */
+	| "a-setting"
+	/** Nothing of its own: rules you write, and fail2ban is a tool beside it. */
+	| "your-own-rules";
+
+/**
+ * Only worth running when the remote access method serves no HTTPS of its own.
+ * Every one of these is yours to run on a name you own: what a hosted service
+ * publishes for you is a way in, so it is picked in the remote access quiz.
+ */
 export type ReverseProxy = {
 	slug: string;
-	/** Which tool it is, for people who already know one of them. */
-	family: "caddy" | "traefik" | "nginx" | "tailscale" | "zoraxy";
 	/**
 	 * The ways the proxy can be told about a service, each a capability and never
 	 * a commitment. Between them they have to cover every option, or the question
@@ -36,32 +76,23 @@ export type ReverseProxy = {
 	hasWebInterface: boolean;
 	hasConfigFile: boolean;
 	readsContainerLabels: boolean;
-	isSetUpWithACommand: boolean;
-	isDependentOnThirdParty: boolean;
 	/** A capability like the ways above: most ship as a package and as an image. */
 	runsNatively: boolean;
 	runsInDocker: boolean;
-	/** No bandwidth cap or terms of service getting in the way of video. */
-	isHighBandwidthFriendly: boolean;
-	needsDomain: boolean;
 	dnsChallenge: DnsChallenge;
 	authentication: Authentication;
-	/** One machine name on three ports, so a second service goes on a path. */
-	servesOneAddress: boolean;
+	websockets: Websockets;
+	abuseBlocking: AbuseBlocking;
 };
 
 /** What Caddy is wherever it runs, the DNS module being the one thing that moves. */
 const caddy = {
-	family: "caddy",
 	hasWebInterface: false,
 	hasConfigFile: true,
 	readsContainerLabels: false,
-	isSetUpWithACommand: false,
-	isDependentOnThirdParty: false,
-	isHighBandwidthFriendly: true,
-	needsDomain: true,
 	authentication: "sso",
-	servesOneAddress: false,
+	websockets: "automatic",
+	abuseBlocking: "your-own-rules",
 } as const;
 
 /**
@@ -90,20 +121,17 @@ const reverseProxies = [
 	},
 	{
 		slug: "traefik",
-		family: "traefik",
 		hasWebInterface: false,
 		hasConfigFile: true,
 		readsContainerLabels: true,
-		isSetUpWithACommand: false,
-		isDependentOnThirdParty: false,
 		runsNatively: true,
 		runsInDocker: true,
-		isHighBandwidthFriendly: true,
-		needsDomain: true,
 		// lego is compiled in, and every provider it knows with it
 		dnsChallenge: "included",
 		authentication: "sso",
-		servesOneAddress: false,
+		websockets: "automatic",
+		// RateLimit and IPAllowList are core middlewares, CrowdSec is a plugin
+		abuseBlocking: "your-own-rules",
 	},
 	{
 		...caddy,
@@ -115,77 +143,71 @@ const reverseProxies = [
 	},
 	{
 		slug: "nginx-proxy-manager",
-		family: "nginx",
 		hasWebInterface: true,
 		hasConfigFile: false,
 		readsContainerLabels: false,
-		isSetUpWithACommand: false,
-		isDependentOnThirdParty: false,
 		runsNatively: false,
 		runsInDocker: true,
-		isHighBandwidthFriendly: true,
-		needsDomain: true,
 		// certbot and its DNS plugins ride along in the image, the provider being
 		// picked from a list in the interface
 		dnsChallenge: "included",
 		authentication: "password",
-		servesOneAddress: false,
+		// Unticked by default, and SyncPlay is what breaks until it is ticked
+		websockets: "a-setting",
+		// Its access lists allow and deny addresses, and nothing reads the log
+		abuseBlocking: "your-own-rules",
 	},
 	{
 		// The only web interface that can run outside a container, which is what
 		// a spare Windows or Mac machine without Docker is otherwise left without
 		slug: "zoraxy",
-		family: "zoraxy",
 		hasWebInterface: true,
 		hasConfigFile: false,
 		readsContainerLabels: false,
-		isSetUpWithACommand: false,
-		isDependentOnThirdParty: false,
 		runsNatively: true,
 		runsInDocker: true,
-		isHighBandwidthFriendly: true,
-		needsDomain: true,
 		// The provider and its credentials are fields in the certificate form
 		dnsChallenge: "included",
 		authentication: "sso",
-		servesOneAddress: false,
+		websockets: "automatic",
+		// Addresses, countries and rate limits, all under Access Control
+		abuseBlocking: "a-setting",
 	},
 	{
-		// For the nginx habit that wants a config file, which Nginx Proxy Manager
-		// does not give
-		slug: "nginx",
-		family: "nginx",
+		// Nginx with the parts a self-hoster ends up assembling anyway already
+		// bolted on: certbot with its DNS plugins, fail2ban, and a sample config
+		// per application, Jellyfin's among them
+		slug: "swag",
 		hasWebInterface: false,
 		hasConfigFile: true,
 		readsContainerLabels: false,
-		isSetUpWithACommand: false,
-		isDependentOnThirdParty: false,
+		runsNatively: false,
+		runsInDocker: true,
+		// Certbot and 40-odd DNS plugins ride along in the image
+		dnsChallenge: "included",
+		// Authelia and Authentik have sample configs, which you still wire up
+		authentication: "sso",
+		// Its shared proxy.conf carries the headers, so its samples come with them
+		websockets: "automatic",
+		// Four jails watching the log from the moment it starts
+		abuseBlocking: "included",
+	},
+	{
+		// Nginx itself, for a config file with nothing wrapped around it: the
+		// certificate is certbot's job, and so is anything watching the logs
+		slug: "nginx",
+		hasWebInterface: false,
+		hasConfigFile: true,
+		readsContainerLabels: false,
 		runsNatively: true,
 		runsInDocker: true,
-		isHighBandwidthFriendly: true,
-		needsDomain: true,
 		// Its own ACME module answers over HTTP only, so DNS-01 is certbot's job
 		dnsChallenge: "external",
 		authentication: "sso",
-		servesOneAddress: false,
-	},
-	{
-		slug: "tailscale-funnel",
-		family: "tailscale",
-		hasWebInterface: false,
-		hasConfigFile: false,
-		readsContainerLabels: false,
-		isSetUpWithACommand: true,
-		isDependentOnThirdParty: true,
-		// The guide installs the daemon on the machine, funnel being a command
-		runsNatively: true,
-		runsInDocker: false,
-		isHighBandwidthFriendly: false,
-		needsDomain: false,
-		// The name is Tailscale's to prove, certificate included
-		dnsChallenge: "included",
-		authentication: "none",
-		servesOneAddress: true,
+		// proxy_http_version, Upgrade and Connection, on every route you write
+		websockets: "directives",
+		// limit_req and deny are built in, fail2ban is a daemon beside it
+		abuseBlocking: "your-own-rules",
 	},
 ] as const satisfies readonly ReverseProxy[];
 
@@ -198,49 +220,43 @@ const hasDnsChallenge = (one: ReverseProxy) =>
 /** Written without knowing what was asked: a description, not a summary. */
 const axes: readonly Axis<ReverseProxy>[] = [
 	{
-		id: "high-bandwidth",
-		holds: (one) => one.isHighBandwidthFriendly,
-		pro: "Streams video without complaint",
-		con: "Streaming video goes against its terms",
-	},
-	{
-		id: "third-party",
-		holds: (one) => !one.isDependentOnThirdParty,
-		pro: "No third party before the reverse proxy",
-		con: "Your traffic goes through a company's servers",
-	},
-	{
-		id: "own-domain",
-		holds: (one) => !one.needsDomain,
-		pro: "No domain to buy",
-		con: "Needs a domain name of your own",
-	},
-	{
 		id: "dns-challenge",
-		// Never named as such: what a reader recognises is the case it buys them,
-		// a certificate for a name that answers nowhere public
-		applies: (one) => one.needsDomain,
+		// Named by the way it proves a name rather than by one of the two things
+		// that buys, since it buys both: a certificate for a name the internet
+		// cannot reach, and one covering every subdomain at once. The questions
+		// ask after each of those; the card has room for neither spelled out.
 		holds: hasDnsChallenge,
-		pro: "HTTPS for private services",
+		pro: "Certificates through your DNS provider",
 		con: (one) =>
 			one.dnsChallenge === "custom-build"
-				? "HTTPS for private services, but only from a custom Docker image, rebuilt at every update"
-				: "HTTPS for private services, but only with certbot set up beside it",
+				? "DNS certificates need a Docker image you build yourself"
+				: "DNS certificates need certbot set up beside it",
 	},
 	{
+		// What it answers for: handing a service to a login page, never the
+		// service behind taking that page's word for who is there
 		id: "single-sign-on",
-		// Funnel publishes, full stop: there is no gate to put in front of it
-		applies: (one) => one.authentication !== "none",
 		holds: (one) => one.authentication === "sso",
-		pro: "Supports single sign on",
-		con: "Per service passwords, but no single sign on",
+		pro: "Can hand any service to one login page",
+		con: "Only a password of its own, service by service",
 	},
 	{
-		id: "authentication",
-		// The service still has its own accounts: the con is that they are the
-		// only gate, and few services treat that as their job
-		holds: (one) => one.authentication !== "none",
-		con: "Nothing in front: each service is left to guard itself",
+		id: "websockets",
+		holds: (one) => one.websockets === "automatic",
+		pro: "Jellyfin sessions work with nothing added",
+		con: (one) =>
+			one.websockets === "a-setting"
+				? "Jellyfin sessions need a box ticked for websockets"
+				: "Jellyfin sessions need websocket headers written in",
+	},
+	{
+		id: "abuse-blocking",
+		holds: (one) => one.abuseBlocking !== "your-own-rules",
+		pro: (one) =>
+			one.abuseBlocking === "included"
+				? "Bans anyone who keeps getting the password wrong"
+				: "Blocks addresses and countries from its interface",
+		con: "Blocking bad clients takes rules of your own, or another tool",
 	},
 	{
 		id: "web-interface",
@@ -251,10 +267,11 @@ const axes: readonly Axis<ReverseProxy>[] = [
 	{
 		id: "versionable",
 		// A web interface is not the better way of the two, only the other one:
-		// what a file and a label have over it is being text of yours
+		// what a file and a label have over it is being text of yours. Worded as
+		// the question about it is worded, rather than as "declarative".
 		applies: (one) => one.hasWebInterface,
 		holds: (one) => one.hasConfigFile || one.readsContainerLabels,
-		con: "Non declarative configuration",
+		con: "Its setup lives in a database, not in files you keep",
 	},
 	{
 		id: "config-file",
@@ -271,16 +288,6 @@ const axes: readonly Axis<ReverseProxy>[] = [
 		holds: (one) => one.runsNatively,
 		con: "Only runs in Docker",
 	},
-	{
-		id: "one-command",
-		holds: (one) => one.isSetUpWithACommand,
-		pro: "One command per service, nothing to edit",
-	},
-	{
-		id: "own-address",
-		holds: (one) => !one.servesOneAddress,
-		con: "Services share one address, on a path",
-	},
 ];
 
 export const traits = (proxy: ReverseProxy) => describe(proxy, axes);
@@ -293,124 +300,98 @@ const dontMind = "I don't mind";
 
 const questions = [
 	{
-		id: "already-used",
-		kind: "fact",
-		// Knowing one is what counts, not running one today: syntax and habits
-		// carry over. Every family needs an answer of its own.
-		question: "Do you already know one of these?",
-		answers: [
-			{
-				id: "none",
-				label: "None, or I'd rather start fresh",
-				keep: keepAll,
-			},
-			{ id: "caddy", label: "Caddy", keep: (p) => p.family === "caddy" },
-			{
-				id: "traefik",
-				label: "Traefik",
-				keep: (p) => p.family === "traefik",
-			},
-			{ id: "nginx", label: "Nginx", keep: (p) => p.family === "nginx" },
-			{
-				id: "zoraxy",
-				label: "Zoraxy",
-				keep: (p) => p.family === "zoraxy",
-			},
-			{
-				id: "tailscale",
-				label: "Tailscale",
-				keep: (p) => p.family === "tailscale",
-			},
-		],
-	},
-	{
 		id: "deployment",
 		kind: "preference",
-		// Rules out only the ones that ship one way
-		question: "How will you run it?",
+		question: "How do you want to run your reverse proxy?",
 		answers: [
-			{
-				id: "docker",
-				label: "In Docker",
-				keep: (p) => p.runsInDocker,
-			},
-			{
-				id: "native",
-				label: "Straight on the machine",
-				keep: (p) => p.runsNatively,
-			},
+			{ id: "docker", label: "In Docker", keep: (p) => p.runsInDocker },
+			{ id: "native", label: "Straight on the machine", keep: (p) => p.runsNatively },
 			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],
 	},
 	{
-		id: "high-bandwidth",
+		id: "exposure",
 		kind: "fact",
-		// Streaming is what this site is about: never let a capped option through
 		asksFirst: true,
-		question: "Will one of your services stream video?",
-		help: "Jellyfin, for instance: video is what some proxies meter or forbid outright.",
+		question: "Will you expose services to the open internet?",
+		help: "Exposed: anyone with the link reaches it, without joining your network first.",
 		answers: [
-			{ id: "yes", label: "Yes", keep: (p) => p.isHighBandwidthFriendly },
-			{ id: "no", label: "No", keep: keepAll },
-			{
-				id: "unknown",
-				label: dontKnow,
-				keep: (p) => p.isHighBandwidthFriendly,
-			},
-		],
-	},
-	{
-		id: "open-internet",
-		kind: "fact",
-		question: "Will all your services be reachable from the open internet?",
-		help: "Reachable means anyone can open its address in a browser, with nothing to install first. One that only answers at home, or once a VPN app is running, is not.",
-		answers: [
-			// HTTP-01 answers on the name itself, which is enough for all of them
-			{ id: "yes", label: "Yes", keep: keepAll },
-			{ id: "no", label: "No", keep: hasDnsChallenge },
+			{ id: "all", label: "Yes, all of them", keep: keepAll },
+			{ id: "some", label: "Yes, some of them", keep: hasDnsChallenge },
+			{ id: "none", label: "No, only people I let in reach them", keep: hasDnsChallenge },
 			{ id: "unknown", label: dontKnow, keep: hasDnsChallenge },
 		],
 	},
 	{
-		id: "third-party",
+		id: "public-names",
 		kind: "preference",
-		question: "Where should your traffic go?",
+		question: "Should the names of your services stay out of public records?",
+		help: "Every certificate is listed in a public register, so one per service publishes each name. One certificate for the whole domain publishes none.",
 		answers: [
-			{
-				id: "third-party",
-				label: "Through a company's servers, one less thing to run",
-				keep: (p) => p.isDependentOnThirdParty,
-			},
-			{
-				id: "direct",
-				label: "Straight from my server to my users",
-				keep: (p) => !p.isDependentOnThirdParty,
-			},
-			{ id: "no-preference", label: dontMind, keep: keepAll },
+			{ id: "yes", label: "Yes", keep: hasDnsChallenge },
+			{ id: "no", label: "No, I'm fine exposing which services I host", keep: keepAll },
 		],
 	},
 	{
-		id: "own-domain",
+		id: "extra-authentication",
 		kind: "preference",
-		question: "What address should your services answer on?",
+		question: "Do you want to be able to add a login in front of your services?",
+		help: "One shared login means a tool like Authelia in front. A services still shows its own login page unless it explicitly integrates with the tool.",
 		answers: [
 			{
-				id: "own-domain",
-				label: "A domain name of my own",
-				keep: (p) => p.needsDomain,
+				id: "shared-login",
+				label: "Yes, a single login to access any service",
+				keep: (p) => p.authentication === "sso",
 			},
 			{
-				id: "given-address",
-				label: "Whatever address I am given",
-				keep: (p) => !p.needsDomain,
+				id: "per-service",
+				label: "Yes, a password per service is enough",
+				keep: keepAll,
 			},
-			{ id: "no-preference", label: dontMind, keep: keepAll },
+			{ id: "no", label: "No", keep: keepAll },
+			{ id: "unknown", label: dontKnow, keep: (p) => p.authentication === "sso" },
+		],
+	},
+	{
+		id: "abuse-blocking",
+		kind: "preference",
+		question: "Should the reverse proxy come with a way to shut out known bad actors?",
+		help: "Anything the internet can reach is found by bots trying to get in.",
+		answers: [
+			{
+				id: "built-in",
+				label: "Yes, without adding a tool",
+				keep: (p) => p.abuseBlocking !== "your-own-rules",
+			},
+			{
+				id: "own-tool",
+				label: "No, I'll add a tool for it if I ever need one",
+				keep: keepAll,
+			},
+		],
+	},
+	{
+		id: "declarative",
+		kind: "preference",
+		question: "Should your setup be files you can keep and copy?",
+		help: "A file is text: you can back it up, keep its history, and rebuild it elsewhere.",
+		answers: [
+			{
+				id: "yes",
+				label: "Yes",
+				keep: (p) => p.hasConfigFile || p.readsContainerLabels,
+			},
+			{
+				id: "no",
+				label: "No, clicking through an interface is fine",
+				keep: keepAll,
+			},
 		],
 	},
 	{
 		id: "how-to-add-a-service",
 		kind: "preference",
-		question: "How do you want to add a service?",
+		question: "How do you want to add routes to services?",
 		answers: [
 			{
 				id: "web-interface",
@@ -424,13 +405,8 @@ const questions = [
 			},
 			{
 				id: "container-label",
-				label: "On the container, as a label",
+				label: "On the service container, as a label",
 				keep: (p) => p.readsContainerLabels,
-			},
-			{
-				id: "one-command",
-				label: "With one command",
-				keep: (p) => p.isSetUpWithACommand,
 			},
 			{ id: "no-preference", label: dontMind, keep: keepAll },
 		],

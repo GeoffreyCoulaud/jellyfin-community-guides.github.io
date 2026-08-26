@@ -27,6 +27,14 @@ type TvClient = "official" | "sideload" | "none";
  */
 type HomeNetworkRequirement = "nothing" | "forwarded-port" | "public-ipv6";
 
+/**
+ * What stands between the method and a film. Two different things, and telling
+ * a reader the wrong one is telling them something false: Cloudflare reserves
+ * the right to cut off video served through the CDN, where Tailscale allows it
+ * and throttles it to a figure it declines to publish.
+ */
+type BandwidthLimit = "terms" | "undisclosed-cap";
+
 /** Concrete work on your machines, so the effort question isn't a judgement call. */
 type SetupStep =
 	| "install-package"
@@ -63,8 +71,8 @@ export type RemoteAccessMethod = {
 	/** A VPS you have to rent and run, on top of the server at home. */
 	needsYourOwnRemoteMachine: boolean;
 	homeNetworkRequirement: HomeNetworkRequirement;
-	/** No bandwidth cap or terms of service getting in the way of video. */
-	isHighBandwidthFriendly: boolean;
+	/** What gets in the way of video. null: nothing does. */
+	bandwidthLimit: BandwidthLimit | null;
 	hasProprietaryComponent: boolean;
 	/**
 	 * Users reach the services by name, no raw IP address to remember. Not pruned
@@ -88,7 +96,12 @@ export type RemoteAccessMethod = {
 	/** What it costs every month. null: free. */
 	price: Price | null;
 	setupSteps: readonly SetupStep[];
-	/** Not pruned on, read off the resolved method to pick extra guides. */
+	/**
+	 * A name to buy and keep paying for. Not pruned on, since a domain is a few
+	 * euros a year rather than a reason to rule a method out, but said on the
+	 * card: ten of these need one, and a reader deserves to hear it before the
+	 * page that sells them one.
+	 */
 	needsDomain: boolean;
 };
 
@@ -111,7 +124,7 @@ const tailscale = {
 	isDependentOnThirdParty: true,
 	needsYourOwnRemoteMachine: false,
 	homeNetworkRequirement: "nothing",
-	isHighBandwidthFriendly: true,
+	bandwidthLimit: null,
 	hasProprietaryComponent: true,
 	hasBuiltInNameResolution: true,
 	appleTv: "official",
@@ -132,7 +145,7 @@ const netbirdCloud = {
 	isDependentOnThirdParty: true,
 	needsYourOwnRemoteMachine: false,
 	homeNetworkRequirement: "nothing",
-	isHighBandwidthFriendly: true,
+	bandwidthLimit: null,
 	hasProprietaryComponent: false,
 	hasBuiltInNameResolution: true,
 	appleTv: "official",
@@ -152,7 +165,7 @@ const zerotier = {
 	isDependentOnThirdParty: true,
 	needsYourOwnRemoteMachine: false,
 	homeNetworkRequirement: "nothing",
-	isHighBandwidthFriendly: true,
+	bandwidthLimit: null,
 	hasProprietaryComponent: true,
 	hasBuiltInNameResolution: false,
 	appleTv: "none",
@@ -175,7 +188,7 @@ const pangolin = {
 	// Access is declared resource by resource, so nothing comes for free
 	reachesEveryLocalService: false,
 	handlesTlsForPublicServices: true,
-	isHighBandwidthFriendly: true,
+	bandwidthLimit: null,
 	hasBuiltInNameResolution: true,
 	appleTv: "none",
 	androidTv: "none",
@@ -225,7 +238,7 @@ const methods = [
 		isDependentOnThirdParty: false,
 		needsYourOwnRemoteMachine: false,
 		homeNetworkRequirement: "forwarded-port",
-		isHighBandwidthFriendly: true,
+		bandwidthLimit: null,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
 		appleTv: "none",
@@ -250,7 +263,7 @@ const methods = [
 		needsYourOwnRemoteMachine: false,
 		// CGNAT is an IPv4 problem, a public IPv6 goes around it entirely
 		homeNetworkRequirement: "public-ipv6",
-		isHighBandwidthFriendly: true,
+		bandwidthLimit: null,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
 		appleTv: "none",
@@ -272,7 +285,7 @@ const methods = [
 		isDependentOnThirdParty: false,
 		needsYourOwnRemoteMachine: true,
 		homeNetworkRequirement: "nothing",
-		isHighBandwidthFriendly: true,
+		bandwidthLimit: null,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
 		appleTv: "none",
@@ -293,7 +306,7 @@ const methods = [
 		isDependentOnThirdParty: false,
 		needsYourOwnRemoteMachine: false,
 		homeNetworkRequirement: "forwarded-port",
-		isHighBandwidthFriendly: true,
+		bandwidthLimit: null,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: false,
 		appleTv: "none",
@@ -306,6 +319,32 @@ const methods = [
 			"edit-config-file",
 			"per-user-key-exchange",
 		],
+		needsDomain: false,
+	},
+	{
+		// The same WireGuard tunnel, with the three things it asks of you taken
+		// over by a web interface: it makes the keys, hands each user a QR code
+		// to scan, and takes their access away again on a click
+		...unlimitedAndFree,
+		slug: "wg-easy",
+		servesPublicServices: false,
+		servesPrivateServices: true,
+		reachesEveryLocalService: true,
+		handlesTlsForPublicServices: false,
+		handlesTlsForPrivateServices: false,
+		isDependentOnThirdParty: false,
+		needsYourOwnRemoteMachine: false,
+		homeNetworkRequirement: "forwarded-port",
+		bandwidthLimit: null,
+		hasProprietaryComponent: false,
+		// Its bundled CoreDNS answers for containers, not for your machines
+		hasBuiltInNameResolution: false,
+		appleTv: "none",
+		androidTv: "official",
+		fireTv: "sideload",
+		hasWebInterface: true,
+		// The compose file runs as it ships, the rest being a form in a browser
+		setupSteps: ["docker-compose"],
 		needsDomain: false,
 	},
 	{
@@ -324,6 +363,19 @@ const methods = [
 		price: { perSeat: { amount: 8, currency: "USD", per: "user" } },
 	},
 	{
+		// The same tailnet with one service published out of it, so the tailnet's
+		// own answers still hold: what changes is that a viewer needs no client
+		...tailscale,
+		slug: "tailscale-funnel",
+		servesPublicServices: true,
+		// The ts.net name is Tailscale's to prove, certificate included
+		handlesTlsForPublicServices: true,
+		bandwidthLimit: "undisclosed-cap",
+		maxUsers: 6,
+		maxDevices: null,
+		price: null,
+	},
+	{
 		...unlimitedAndFree,
 		slug: "headscale",
 		servesPublicServices: false,
@@ -336,7 +388,7 @@ const methods = [
 		isDependentOnThirdParty: false,
 		needsYourOwnRemoteMachine: true,
 		homeNetworkRequirement: "nothing",
-		isHighBandwidthFriendly: true,
+		bandwidthLimit: null,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
 		// Third party ones exist, the project itself is a command line
@@ -373,7 +425,7 @@ const methods = [
 		isDependentOnThirdParty: false,
 		needsYourOwnRemoteMachine: true,
 		homeNetworkRequirement: "nothing",
-		isHighBandwidthFriendly: true,
+		bandwidthLimit: null,
 		hasProprietaryComponent: false,
 		hasBuiltInNameResolution: true,
 		appleTv: "official",
@@ -413,8 +465,10 @@ const methods = [
 		isDependentOnThirdParty: true,
 		needsYourOwnRemoteMachine: false,
 		homeNetworkRequirement: "nothing",
-		// Their terms of service rule out streaming video through the proxy
-		isHighBandwidthFriendly: false,
+		// The clause left the subscription terms in 2023 and came back in the
+		// CDN section of the service-specific ones: video served through the CDN
+		// is for their paid Stream product, and they may cut the rest off
+		bandwidthLimit: "terms",
 		hasProprietaryComponent: true,
 		hasBuiltInNameResolution: true,
 		appleTv: "none",
@@ -432,6 +486,10 @@ const methods = [
 
 export type MethodSlug = (typeof methods)[number]["slug"];
 
+/** Whichever way it is limited, a limited one is one to keep films off. */
+const streamsVideo = (method: RemoteAccessMethod) =>
+	method.bandwidthLimit === null;
+
 /** CGNAT and a router you cannot touch both leave you without a port to forward. */
 const worksWithoutForwardedPort = (method: RemoteAccessMethod) =>
 	method.homeNetworkRequirement !== "forwarded-port";
@@ -445,6 +503,13 @@ const worksWithoutPublicIpv6 = (method: RemoteAccessMethod) =>
  */
 const handlesTlsItself = (method: RemoteAccessMethod) =>
 	method.handlesTlsForPublicServices || method.handlesTlsForPrivateServices;
+
+/**
+ * True of a method serving nothing privately too: a question about the private
+ * half cannot rule out the methods that have no private half to speak of.
+ */
+const coversPrivateTls = (method: RemoteAccessMethod) =>
+	!method.servesPrivateServices || method.handlesTlsForPrivateServices;
 
 /** A half it serves and puts no HTTPS on: something else has to. */
 const needsAReverseProxy = (method: RemoteAccessMethod) =>
@@ -536,9 +601,12 @@ const axes: readonly Axis<RemoteAccessMethod>[] = [
 	},
 	{
 		id: "high-bandwidth",
-		holds: (one) => one.isHighBandwidthFriendly,
+		holds: streamsVideo,
 		pro: "Streams video without complaint",
-		con: "Streaming video goes against its terms",
+		con: (one) =>
+			one.bandwidthLimit === "terms"
+				? "Streaming video goes against its terms"
+				: "An undisclosed bandwidth cap",
 	},
 	{
 		id: "port-forwarding",
@@ -578,8 +646,7 @@ const axes: readonly Axis<RemoteAccessMethod>[] = [
 	{
 		id: "private-tls",
 		applies: (one) => one.servesPrivateServices,
-		holds: (one) =>
-			!one.servesPrivateServices || one.handlesTlsForPrivateServices,
+		holds: coversPrivateTls,
 		pro: "HTTPS on what stays private",
 		con: "A reverse proxy to add for HTTPS on what stays private",
 	},
@@ -600,6 +667,14 @@ const axes: readonly Axis<RemoteAccessMethod>[] = [
 		holds: (one) => one.hasBuiltInNameResolution,
 		pro: "Machines answer to a name",
 		con: "Names take a DNS zone of your own",
+	},
+	{
+		// Worded as the reverse proxy quiz words it: one thing, one sentence,
+		// wherever the reader meets it
+		id: "own-domain",
+		holds: (one) => !one.needsDomain,
+		pro: "No domain to buy",
+		con: "Needs a domain name of your own",
 	},
 	...tvAxes("apple-tv", "An Apple TV", (one) => one.appleTv),
 	...tvAxes("android-tv", "An Android TV", (one) => one.androidTv),
@@ -655,7 +730,7 @@ const questions = [
 		// What a home line can do at all, before asking where connections land
 		asksFirst: true,
 		question: "Can you set up port forwarding on your router?",
-		help: "Port forwarding tells your router to send connections arriving on a given port to your server. It lives in your router's admin page, sometimes under NAT or virtual servers. It also takes a public IPv4 address: under CGNAT your ISP shares one between several homes, and no port can be opened. Compare the address your router shows with the one a what-is-my-ip website reports, different means CGNAT. https://en.wikipedia.org/wiki/Carrier-grade_NAT",
+		help: "A setting in your router, often under NAT or virtual servers. If the address it shows differs from what a what-is-my-ip site reports, you are behind CGNAT and cannot open one.",
 		answers: [
 			{
 				// Not keepAll: the IPv6-only route is the same setup minus the users
@@ -673,9 +748,12 @@ const questions = [
 		],
 	},
 	{
+		// Not pinned to the front, unlike the port forwarding question above it.
+		// That one settles where connections can land at all, which later
+		// preferences read off; this one speaks for a single option, so it waits
+		// until it is the thing telling that option from the rest.
 		id: "public-ipv6",
 		kind: "fact",
-		asksFirst: true,
 		question: "Will every one of your users have public IPv6?",
 		answers: [
 			{ id: "yes", label: "Yes", keep: keepAll },
@@ -722,13 +800,9 @@ const questions = [
 		question: "Will you stream video through it?",
 		help: "Jellyfin, for instance: video is what some tools meter or forbid outright.",
 		answers: [
-			{ id: "yes", label: "Yes", keep: (m) => m.isHighBandwidthFriendly },
+			{ id: "yes", label: "Yes", keep: streamsVideo },
 			{ id: "no", label: "No", keep: keepAll },
-			{
-				id: "unknown",
-				label: dontKnow,
-				keep: (m) => m.isHighBandwidthFriendly,
-			},
+			{ id: "unknown", label: dontKnow, keep: streamsVideo },
 		],
 	},
 	{
@@ -755,7 +829,7 @@ const questions = [
 		kind: "preference",
 		question:
 			"Should remote access keep working if its provider went away?",
-		help: "Some of these need an account, a coordination server or a licence check that you do not run, and stop the day it stops. A server you rent does not count: what runs on it is yours.",
+		help: "Some need an account, a coordination server or a licence check you do not run, and stop the day it stops. A server you rent is yours.",
 		answers: [
 			{
 				id: "yes",
@@ -813,7 +887,7 @@ const questions = [
 		kind: "fact",
 		question:
 			"Will an LG or Samsung TV, a Roku, or a console need to reach your services?",
-		help: "Their stores carry no VPN client at all. An Apple TV, an Android TV or a Fire TV can run one, televisions that run Android TV included, though not every tool has an app for all three.",
+		help: "Their stores carry no VPN client at all. An Apple TV, an Android TV or a Fire TV can run one, though not every tool has an app for all three.",
 		answers: [
 			{ id: "yes", label: "Yes", keep: worksOnAnyTv },
 			{ id: "no", label: "No", keep: keepAll },
@@ -883,10 +957,27 @@ const questions = [
 		],
 	},
 	{
+		// The question `tls` above asks who serves HTTPS, and a method covering
+		// either half answers it. This one asks after the private half alone,
+		// which is the only thing telling some tools from one another.
+		id: "private-tls",
+		kind: "preference",
+		question: "Should the services you keep private answer over HTTPS too?",
+		help: "Behind a VPN the traffic is already encrypted, so this is about what browsers and apps accept: without HTTPS they warn, and some refuse outright.",
+		answers: [
+			{ id: "yes", label: "Yes", keep: coversPrivateTls },
+			{
+				id: "no",
+				label: "No, plain HTTP is fine inside my network",
+				keep: keepAll,
+			},
+		],
+	},
+	{
 		id: "web-interface",
 		kind: "preference",
 		question: "How do you want to manage remote access?",
-		help: "A web interface adds users, devices and routes from any browser, on any of your machines. Without one, you log in to the server itself to do it there, in a file or with a command depending on the tool.",
+		help: "A web interface adds users and devices from any browser. Without one, you log in to the server and edit a file or run a command.",
 		answers: [
 			{
 				id: "web-interface",

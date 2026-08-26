@@ -33,6 +33,11 @@ const remoteAccess: Record<MethodSlug, Listing> = {
 		page: "wireguard",
 		emblem: { icon: "wireguard" },
 	},
+	"wg-easy": {
+		title: "wg-easy",
+		page: "wg-easy",
+		emblem: { icon: "wg-easy" },
+	},
 	"tailscale-free": {
 		title: "Tailscale, free plan",
 		page: "tailscale",
@@ -42,6 +47,12 @@ const remoteAccess: Record<MethodSlug, Listing> = {
 		title: "Tailscale, Standard plan",
 		page: "tailscale",
 		emblem: { icon: "tailscale", pips: ["paid"] },
+	},
+	// A page of its own: publishing a service is not what the tailnet guide does
+	"tailscale-funnel": {
+		title: "Tailscale Funnel",
+		page: "tailscale-funnel",
+		emblem: { icon: "tailscale", pips: ["public"] },
 	},
 	headscale: {
 		title: "Headscale",
@@ -131,11 +142,9 @@ const reverseProxy: Record<ReverseProxySlug, Listing> = {
 	},
 	zoraxy: { title: "Zoraxy", page: "zoraxy", emblem: { icon: "zoraxy" } },
 	nginx: { title: "Nginx", page: "nginx", emblem: { icon: "nginx" } },
-	"tailscale-funnel": {
-		title: "Tailscale Funnel",
-		page: "tailscale-funnel",
-		emblem: { icon: "tailscale" },
-	},
+	// SWAG draws no mark of its own, so it wears the one of the people who build
+	// it, which is what its page and its image are published under anyway
+	swag: { title: "SWAG", page: "swag", emblem: { icon: "swag" } },
 };
 
 const resolve = (directory: string, listing: Listing): Guide => ({
