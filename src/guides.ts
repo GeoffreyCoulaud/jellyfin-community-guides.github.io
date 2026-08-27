@@ -148,6 +148,11 @@ const reverseProxy: Record<ReverseProxySlug, Listing> = {
 	},
 	zoraxy: { title: "Zoraxy", page: "zoraxy", emblem: { icon: "zoraxy" } },
 	nginx: { title: "Nginx", page: "nginx", emblem: { icon: "nginx" } },
+	"nginx-in-docker": {
+		title: "Nginx in Docker",
+		page: "nginx",
+		emblem: { icon: "nginx", pips: ["docker"] },
+	},
 	// SWAG draws no mark of its own, so it wears the one of the people who build
 	// it, which is what its page and its image are published under anyway
 	swag: { title: "SWAG", page: "swag", emblem: { icon: "swag" } },

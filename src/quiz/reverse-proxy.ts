@@ -30,20 +30,23 @@ type Websockets =
 	/** Headers to write into the route by hand. */
 	| "directives";
 
-/**
- * What it takes to shut out the scanners that find any address published for
- * long enough. Two things behind one field: banning whoever keeps failing,
- * which takes something reading the log, and refusing a list of addresses and
- * countries, which does not. Not "directives" like the websockets above: the
- * banning half has no directive in any of these, it is a second daemon.
- */
-type AbuseBlocking =
+type AutomaticBans =
 	/** Fail2ban in the image, jails already watching when you start it. */
 	| "included"
-	/** Addresses, countries and rates, filled in from its own interface. */
+	/** Fail2ban or CrowdSec beside it, a daemon with a setup of its own. */
+	| "external";
+
+type Geoblocking =
+/** Countries ticked in its interface, the database already in there. */
 	| "a-setting"
-	/** Nothing of its own: rules you write, and fail2ban is a tool beside it. */
-	| "your-own-rules";
+	/** A line of configuration: the module is already in what it runs. */
+	| "included"
+	/** A plugin it fetches, or a package to add, before there is a line to write. */
+	| "extra-module"
+	/** An image of your own to build, and to build again at every update. */
+	| "custom-build"
+	/** Only addresses, and nowhere to name a country. */
+	| "none";
 
 export type ReverseProxy = {
 	slug: string;
@@ -61,17 +64,32 @@ export type ReverseProxy = {
 	dnsChallenge: DnsChallenge;
 	authentication: Authentication;
 	websockets: Websockets;
-	abuseBlocking: AbuseBlocking;
+	automaticBans: AutomaticBans;
+	geoblocking: Geoblocking;
 };
 
-/** What Caddy is wherever it runs, the DNS module being the one thing that moves. */
+/** What Caddy is wherever it runs, its modules being the one thing that moves. */
 const caddy = {
 	hasWebInterface: false,
 	hasConfigFile: true,
 	readsContainerLabels: false,
 	authentication: "sso",
 	websockets: "automatic",
-	abuseBlocking: "your-own-rules",
+	automaticBans: "external",
+} as const;
+
+/** The same for Nginx, where the module that moves is the one reading countries. */
+const nginx = {
+	hasWebInterface: false,
+	hasConfigFile: true,
+	readsContainerLabels: false,
+	// Its own ACME module answers over HTTP only, so DNS-01 is certbot's job
+	dnsChallenge: "external",
+	authentication: "sso",
+	// proxy_http_version, Upgrade and Connection, on every route you write
+	websockets: "directives",
+	// limit_req and deny are built in, fail2ban is a daemon beside it
+	automaticBans: "external",
 } as const;
 
 /**
@@ -87,16 +105,19 @@ const reverseProxies = [
 		runsInDocker: false,
 		// caddy add-package swaps the binary for one carrying the provider module
 		dnsChallenge: "extra-package",
+		// caddy-maxmind-geolocation, swapped in the same way
+		geoblocking: "extra-module",
 	},
 	{
-		// The one tool where running it in Docker changes what you get: the DNS
-		// module is compiled in, and no official image carries one
+		// Running it in Docker changes what you get: the DNS module is compiled
+		// in, and no official image carries one
 		...caddy,
 		slug: "caddy-in-docker",
 		runsNatively: false,
 		runsInDocker: true,
 		// Nothing to swap inside an image: xcaddy, in a Dockerfile of your own
 		dnsChallenge: "custom-build",
+		geoblocking: "custom-build",
 	},
 	{
 		slug: "traefik",
@@ -110,7 +131,10 @@ const reverseProxies = [
 		authentication: "sso",
 		websockets: "automatic",
 		// RateLimit and IPAllowList are core middlewares, CrowdSec is a plugin
-		abuseBlocking: "your-own-rules",
+		// whose engine still runs beside it
+		automaticBans: "external",
+		// No core middleware for countries: a plugin, named in the static config
+		geoblocking: "extra-module",
 	},
 	{
 		...caddy,
@@ -119,6 +143,7 @@ const reverseProxies = [
 		runsNatively: false,
 		runsInDocker: true,
 		dnsChallenge: "custom-build",
+		geoblocking: "custom-build",
 	},
 	{
 		slug: "nginx-proxy-manager",
@@ -133,8 +158,10 @@ const reverseProxies = [
 		authentication: "password",
 		// Unticked by default, and SyncPlay is what breaks until it is ticked
 		websockets: "a-setting",
-		// Its access lists allow and deny addresses, and nothing reads the log
-		abuseBlocking: "your-own-rules",
+		// Nothing reads the log, and no image to put fail2ban in either
+		automaticBans: "external",
+		// Its access lists know addresses and nothing else
+		geoblocking: "none",
 	},
 	{
 		slug: "zoraxy",
@@ -147,8 +174,10 @@ const reverseProxies = [
 		dnsChallenge: "included",
 		authentication: "sso",
 		websockets: "automatic",
-		// Addresses, countries and rate limits, all under Access Control
-		abuseBlocking: "a-setting",
+		// Its Access Control blocks and rate limits, but reads no log
+		automaticBans: "external",
+		// Countries ticked under Access Control, off a database it ships with
+		geoblocking: "a-setting",
 	},
 	{
 		slug: "swag",
@@ -164,24 +193,28 @@ const reverseProxies = [
 		// Its shared proxy.conf carries the headers, so its samples come with them
 		websockets: "automatic",
 		// Four jails watching the log from the moment it starts
-		abuseBlocking: "included",
+		automaticBans: "included",
+		// The geoip2 module rides along too, countries listed in geoip2.conf
+		geoblocking: "included",
 	},
 	{
 		// Nginx itself, for a config file with nothing wrapped around it: the
 		// certificate is certbot's job, and so is anything watching the logs
+		...nginx,
 		slug: "nginx",
-		hasWebInterface: false,
-		hasConfigFile: true,
-		readsContainerLabels: false,
 		runsNatively: true,
+		runsInDocker: false,
+		// The distribution packages the geoip2 module, so it is one install away
+		geoblocking: "extra-module",
+	},
+	{
+		...nginx,
+		slug: "nginx-in-docker",
+		runsNatively: false,
 		runsInDocker: true,
-		// Its own ACME module answers over HTTP only, so DNS-01 is certbot's job
-		dnsChallenge: "external",
-		authentication: "sso",
-		// proxy_http_version, Upgrade and Connection, on every route you write
-		websockets: "directives",
-		// limit_req and deny are built in, fail2ban is a daemon beside it
-		abuseBlocking: "your-own-rules",
+		// No geoip2 in the packages the image is built from, and a module has to
+		// be compiled against the exact build it loads into
+		geoblocking: "custom-build",
 	},
 ] as const satisfies readonly ReverseProxy[];
 
@@ -190,6 +223,10 @@ export type ReverseProxySlug = (typeof reverseProxies)[number]["slug"];
 /** Within reach: nothing to build, and no second tool to run beside it. */
 const hasDnsChallenge = (one: ReverseProxy) =>
 	one.dnsChallenge === "included" || one.dnsChallenge === "extra-package";
+
+/** The same reach, one value further: a field counts as much as a module does. */
+const hasGeoblocking = (one: ReverseProxy) =>
+	one.geoblocking !== "custom-build" && one.geoblocking !== "none";
 
 /** Written without knowing what was asked: a description, not a summary. */
 const axes: readonly Axis<ReverseProxy>[] = [
@@ -224,16 +261,22 @@ const axes: readonly Axis<ReverseProxy>[] = [
 				: "Jellyfin sessions need websocket headers written in",
 	},
 	{
-		// No question asks after this one. Asked cold it landed second every time,
-		// on a choice nobody can weigh before there is a result to weigh it
-		// against, so it is a con to refuse off a card instead.
-		id: "abuse-blocking",
-		holds: (one) => one.abuseBlocking !== "your-own-rules",
-		pro: (one) =>
-			one.abuseBlocking === "included"
-				? "Bans anyone who keeps getting the password wrong"
-				: "Blocks addresses and countries from its interface",
-		con: "Blocking bad clients takes rules of your own, or another tool",
+		// No question asks after this one, nor after the next. Asked cold they
+		// landed second every time, on a choice nobody can weigh before there is a
+		// result to weigh it against, so they are cons to refuse off a card.
+		id: "automatic-bans",
+		holds: (one) => one.automaticBans === "included",
+		pro: "Can ban anyone who keeps getting the password wrong",
+		con: "Banning repeat offenders takes fail2ban run beside it",
+	},
+	{
+		id: "geoblocking",
+		holds: hasGeoblocking,
+		pro: "Can block whole countries, not just addresses",
+		con: (one) =>
+			one.geoblocking === "custom-build"
+				? "Blocking countries needs a Docker image you build yourself"
+				: "No way to block a country, only addresses",
 	},
 	{
 		id: "web-interface",
@@ -377,7 +420,7 @@ export const reverseProxyQuiz: Quiz<ReverseProxy> = {
 export type ExtraGuide = "harden-reverse-proxy";
 
 export const extraGuides = (proxy: ReverseProxy): ExtraGuide[] =>
-	proxy.abuseBlocking !== "included" ? ["harden-reverse-proxy"] : [];
+	proxy.automaticBans === "included" ? [] : ["harden-reverse-proxy"];
 
 /**
  * Cloudflare is deliberately absent. The orange cloud maps every proxied
