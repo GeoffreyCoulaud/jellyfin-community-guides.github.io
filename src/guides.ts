@@ -1,6 +1,12 @@
 import type { Emblem, IconName } from "./icons/emblems";
-import type { ExtraGuide, MethodSlug } from "./quiz/remote-access";
-import type { ReverseProxySlug } from "./quiz/reverse-proxy";
+import type {
+	ExtraGuide as RemoteAccessExtra,
+	MethodSlug,
+} from "./quiz/remote-access";
+import type {
+	ExtraGuide as ReverseProxyExtra,
+	ReverseProxySlug,
+} from "./quiz/reverse-proxy";
 
 /**
  * `page` is a file under the family's directory, not the option's own slug:
@@ -163,7 +169,7 @@ export const reverseProxyGuide = (slug: ReverseProxySlug) =>
 export type Extra = { title: string; href: string };
 
 /** The reverse proxy is a quiz of its own, the rest are reference pages. */
-export const extraPages: Record<ExtraGuide, Extra> = {
+export const remoteAccessExtras: Record<RemoteAccessExtra, Extra> = {
 	"reverse-proxy": {
 		title: "Pick a reverse proxy for HTTPS",
 		href: "/quiz/reverse-proxy/",
@@ -183,6 +189,13 @@ export const extraPages: Record<ExtraGuide, Extra> = {
 	"private-dns": {
 		title: "Reach your machines by name",
 		href: `${referenceDirectory}/private-dns/`,
+	},
+};
+
+export const reverseProxyExtras: Record<ReverseProxyExtra, Extra> = {
+	"harden-reverse-proxy": {
+		title: "Harden your reverse proxy",
+		href: `${referenceDirectory}/harden-reverse-proxy/`,
 	},
 };
 

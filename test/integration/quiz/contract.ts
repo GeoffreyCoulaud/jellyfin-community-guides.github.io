@@ -19,7 +19,7 @@ import {
 	type QuizState,
 	type Trait,
 } from "../../../src/quiz/engine";
-import { iconForPage, type Guide } from "../../../src/guides";
+import { iconForPage, type Extra, type Guide } from "../../../src/guides";
 
 /** Where Starlight reads the pages the quizzes link to. */
 const content = fileURLToPath(
@@ -96,6 +96,12 @@ export const everyWayThrough = <O extends Option>(quiz: Quiz<O>): Ways => {
 	return ways;
 };
 
+/** The pages left to read once an option is picked, keyed as the quiz names them. */
+type Extras<O extends Option> = {
+	handedOut: (option: O) => readonly string[];
+	pages: Record<string, Extra>;
+};
+
 type Family<O extends Option> = {
 	name: string;
 	quiz: Quiz<O>;
@@ -104,6 +110,8 @@ type Family<O extends Option> = {
 	guide: (option: O) => Guide;
 	/** Where this family's guides live, so an unread one shows up. */
 	directory: string;
+	/** Left out by a family sending the reader nowhere else. */
+	extras?: Extras<O>;
 };
 
 /** The duplicates in a list, which every id here has to come back empty of. */
@@ -116,6 +124,7 @@ export const behavesLikeAQuiz = <O extends Option>({
 	traits,
 	guide,
 	directory,
+	extras,
 }: Family<O>) => {
 	const slugs = quiz.options.map((option) => option.slug);
 	let walked: Ways | undefined;
@@ -284,6 +293,33 @@ export const behavesLikeAQuiz = <O extends Option>({
 			// then it is the icon the option carries, options sharing a page
 			// sharing what it is a picture of
 			expect(wrong).toEqual([]);
+		});
+
+		if (extras === undefined) return;
+
+		it("sends every extra guide to a page that exists", () => {
+			// given the pages the extra guides point at
+			// when they are looked for
+			const missing = Object.values(extras.pages)
+				.filter((extra) => !hasPage(extra.href))
+				.map((extra) => extra.href);
+
+			// then every one of them is written
+			expect(missing).toEqual([]);
+		});
+
+		it("hands out every extra guide it knows of", () => {
+			// given the extra guides the family can name
+			const handedOut = new Set(quiz.options.flatMap(extras.handedOut));
+
+			// when the options are read for the ones they earn
+			const never = Object.keys(extras.pages).filter(
+				(extra) => !handedOut.has(extra),
+			);
+
+			// then none is missing an option to earn it: a guide nobody is
+			// sent to is a page nobody reads
+			expect(never).toEqual([]);
 		});
 	});
 };

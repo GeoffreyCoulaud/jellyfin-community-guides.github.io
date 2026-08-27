@@ -6,22 +6,12 @@ import {
 	type Quiz,
 } from "./engine";
 
-/**
- * What it can be asked to put in front of a service. Nothing in front is not on
- * the list: every one of these can leave a service open. Whether the service
- * behind takes the portal's word for who is there is its own business, and no
- * proxy answers for it.
- */
 type Authentication =
 	/** Forward auth to Authelia and the like: one login page for all of them. */
 	| "sso"
 	/** A password of its own, and nothing to hand a login page over to. */
 	| "password";
 
-/**
- * What a certificate costs to set up, the DNS challenge being the only one open
- * to a service the internet cannot reach.
- */
 type DnsChallenge =
 	/** A line of configuration: every provider is already in there. */
 	| "included"
@@ -32,12 +22,6 @@ type DnsChallenge =
 	/** Certbot beside it, a second tool with a configuration of its own. */
 	| "external";
 
-/**
- * What it takes to let websockets through. Jellyfin holds a session open on one
- * and warns in its own documentation that not every proxy allows them by
- * default: miss the step and films still play, while everything keeping the
- * clients in step with the server quietly stops.
- */
 type Websockets =
 	/** Upgraded on their own, with nothing to say about it anywhere. */
 	| "automatic"
@@ -61,11 +45,6 @@ type AbuseBlocking =
 	/** Nothing of its own: rules you write, and fail2ban is a tool beside it. */
 	| "your-own-rules";
 
-/**
- * Only worth running when the remote access method serves no HTTPS of its own.
- * Every one of these is yours to run on a name you own: what a hosted service
- * publishes for you is a way in, so it is picked in the remote access quiz.
- */
 export type ReverseProxy = {
 	slug: string;
 	/**
@@ -158,8 +137,6 @@ const reverseProxies = [
 		abuseBlocking: "your-own-rules",
 	},
 	{
-		// The only web interface that can run outside a container, which is what
-		// a spare Windows or Mac machine without Docker is otherwise left without
 		slug: "zoraxy",
 		hasWebInterface: true,
 		hasConfigFile: false,
@@ -174,9 +151,6 @@ const reverseProxies = [
 		abuseBlocking: "a-setting",
 	},
 	{
-		// Nginx with the parts a self-hoster ends up assembling anyway already
-		// bolted on: certbot with its DNS plugins, fail2ban, and a sample config
-		// per application, Jellyfin's among them
 		slug: "swag",
 		hasWebInterface: false,
 		hasConfigFile: true,
@@ -250,6 +224,9 @@ const axes: readonly Axis<ReverseProxy>[] = [
 				: "Jellyfin sessions need websocket headers written in",
 	},
 	{
+		// No question asks after this one. Asked cold it landed second every time,
+		// on a choice nobody can weigh before there is a result to weigh it
+		// against, so it is a con to refuse off a card instead.
 		id: "abuse-blocking",
 		holds: (one) => one.abuseBlocking !== "your-own-rules",
 		pro: (one) =>
@@ -292,10 +269,7 @@ const axes: readonly Axis<ReverseProxy>[] = [
 
 export const traits = (proxy: ReverseProxy) => describe(proxy, axes);
 
-/** The way out of a fact, kept to the safe side: a guess rules nothing out. */
 const dontKnow = "I don't know";
-
-/** The way out of a preference, which takes no side and so rules nothing out. */
 const dontMind = "I don't mind";
 
 const questions = [
@@ -353,24 +327,6 @@ const questions = [
 		],
 	},
 	{
-		id: "abuse-blocking",
-		kind: "preference",
-		question: "Should the reverse proxy come with a way to shut out known bad actors?",
-		help: "Anything the internet can reach is found by bots trying to get in.",
-		answers: [
-			{
-				id: "built-in",
-				label: "Yes, without adding a tool",
-				keep: (p) => p.abuseBlocking !== "your-own-rules",
-			},
-			{
-				id: "own-tool",
-				label: "No, I'll add a tool for it if I ever need one",
-				keep: keepAll,
-			},
-		],
-	},
-	{
 		id: "declarative",
 		kind: "preference",
 		question: "Should your setup be files you can keep and copy?",
@@ -413,15 +369,15 @@ const questions = [
 	},
 ] as const satisfies readonly Question<ReverseProxy>[];
 
-/**
- * No `worseThan` here. What an image of your own costs is only worth anything
- * against a service the internet cannot reach, and ruling the option out before
- * asking sends home whoever never needed the DNS challenge at all.
- */
 export const reverseProxyQuiz: Quiz<ReverseProxy> = {
 	options: reverseProxies,
 	questions,
 };
+
+export type ExtraGuide = "harden-reverse-proxy";
+
+export const extraGuides = (proxy: ReverseProxy): ExtraGuide[] =>
+	proxy.abuseBlocking !== "included" ? ["harden-reverse-proxy"] : [];
 
 /**
  * Cloudflare is deliberately absent. The orange cloud maps every proxied

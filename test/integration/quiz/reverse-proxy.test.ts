@@ -1,8 +1,9 @@
 /** What the reverse proxy quiz owes its readers, on top of the contract. */
 
 import { describe, expect, it } from "vitest";
-import { reverseProxyGuide } from "../../../src/guides";
+import { reverseProxyExtras, reverseProxyGuide } from "../../../src/guides";
 import {
+	extraGuides,
 	reverseProxyQuiz,
 	traits,
 	type ReverseProxy,
@@ -19,6 +20,7 @@ behavesLikeAQuiz({
 	guide: (proxy: ReverseProxy) =>
 		reverseProxyGuide(proxy.slug as ReverseProxySlug),
 	directory: "guides/reverse-proxy",
+	extras: { handedOut: extraGuides, pages: reverseProxyExtras },
 });
 
 /** The way out of a preference, which takes no side and so rules nothing out. */
