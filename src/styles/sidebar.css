@@ -1,0 +1,16 @@
+/* Pages set `--sidebar-icon` on their sidebar link through `sidebar.attrs` in their frontmatter. */
+.sidebar a[style*="--sidebar-icon"] {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+/* A white tile keeps dark logos visible in the dark theme. */
+.sidebar a[style*="--sidebar-icon"]::before {
+	content: "";
+	flex: none;
+	width: 1.4em;
+	height: 1.4em;
+	border-radius: 22%;
+	background: var(--sidebar-icon) center / 80% no-repeat #fff;
+}
