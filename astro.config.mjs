@@ -19,6 +19,10 @@ export default defineConfig({
 			],
 			sidebar: [
 				{
+					label: "Quiz",
+					items: [{ autogenerate: { directory: "quiz" } }],
+				},
+				{
 					label: "Guides",
 					items: [
 						"guides/get-started",

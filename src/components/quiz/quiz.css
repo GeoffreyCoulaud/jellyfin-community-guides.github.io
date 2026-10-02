@@ -1,0 +1,227 @@
+/* `not-content` on the root turns Starlight's markdown styles off, so all of it is styled here. */
+.quiz {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+.quiz p {
+	margin: 0;
+}
+
+.quiz ul,
+.quiz ol {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.quiz a {
+	color: var(--sl-color-text-accent);
+}
+
+.quiz a:hover {
+	color: var(--sl-color-white);
+}
+
+.quiz-title {
+	margin: 0 0 0.75rem;
+	font-size: var(--sl-text-h4);
+	line-height: var(--sl-line-height-headings);
+	color: var(--sl-color-white);
+}
+
+.quiz-result-title {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin-bottom: 0;
+}
+
+.quiz-heading {
+	margin: 0 0 0.5rem;
+	font-size: var(--sl-text-sm);
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-2);
+}
+
+.quiz-note {
+	color: var(--sl-color-gray-3);
+	font-size: var(--sl-text-sm);
+}
+
+.quiz-block {
+	margin-top: 1.75rem;
+}
+
+.quiz-block .quiz-note {
+	margin-bottom: 0.5rem;
+}
+
+.quiz-badge {
+	display: inline-block;
+	vertical-align: middle;
+	margin-right: 0.4rem;
+	padding: 0 0.3rem;
+	font-size: var(--sl-text-xs);
+	font-weight: 500;
+	line-height: 1.5;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-3);
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.2rem;
+}
+
+.quiz-bar {
+	height: 0.3rem;
+	border-radius: 999px;
+	background: var(--sl-color-gray-6);
+	overflow: hidden;
+}
+
+.quiz-bar-fill {
+	display: block;
+	height: 100%;
+	background: var(--sl-color-text-accent);
+	transition: width 0.2s ease;
+}
+
+.quiz-answers {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	margin: 0.75rem 0;
+}
+
+.quiz-answers button {
+	width: 100%;
+	padding: 0.5rem 0.75rem;
+	font: inherit;
+	text-align: left;
+	color: var(--sl-color-white);
+	background: var(--sl-color-bg);
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.25rem;
+	cursor: pointer;
+}
+
+.quiz-answers button:hover {
+	border-color: var(--sl-color-text-accent);
+	background: var(--sl-color-gray-6);
+}
+
+.quiz-dead {
+	display: block;
+	padding: 0.5rem 0.75rem;
+	color: var(--sl-color-gray-3);
+	border: 1px dashed var(--sl-color-gray-5);
+	border-radius: 0.25rem;
+}
+
+.quiz-text-button {
+	margin-top: 0.5rem;
+	padding: 0;
+	font: inherit;
+	font-size: var(--sl-text-sm);
+	color: var(--sl-color-gray-3);
+	background: none;
+	border: 0;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.quiz-text-button:hover {
+	color: var(--sl-color-white);
+}
+
+/* A white tile keeps dark logos visible in the dark theme. */
+.quiz-icon {
+	flex: none;
+	box-sizing: border-box;
+	width: 1.75rem;
+	height: 1.75rem;
+	padding: 0.15rem;
+	border-radius: 22%;
+	background: #fff;
+}
+
+.quiz-icon-large {
+	width: 2.5rem;
+	height: 2.5rem;
+	padding: 0.25rem;
+}
+
+.quiz-links {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.quiz-links a {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+/* Pages without an icon get an arrow in its place. */
+.quiz-links a:not(:has(.quiz-icon))::before {
+	content: "→";
+	color: var(--sl-color-gray-3);
+}
+
+/* auto-fit: a card with only pros takes the whole width. */
+.quiz-columns {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+	gap: 1.5rem;
+	align-items: start;
+}
+
+.quiz-traits {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.quiz-traits li {
+	line-height: 1.5;
+	color: var(--sl-color-gray-2);
+}
+
+.quiz-pro::before {
+	content: "✓ ";
+	color: var(--sl-color-text-accent);
+}
+
+.quiz-con::before {
+	content: "✗ ";
+	color: var(--sl-color-gray-3);
+}
+
+.quiz-recap ol {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	margin-top: 0.5rem;
+	font-size: var(--sl-text-sm);
+}
+
+.quiz-recap li {
+	display: flex;
+	gap: 0.4rem;
+	align-items: baseline;
+	padding: 0.25rem 0.4rem;
+	color: var(--sl-color-gray-2);
+}
+
+.quiz-recap-text {
+	flex: 1;
+}
+
+.quiz-recap .quiz-text-button {
+	flex: none;
+	margin: 0;
+}

@@ -19,3 +19,4 @@ jobs:
       - run: npx biome ci
       - run: npm run knip
       - run: npm run check
+      - run: npm test
