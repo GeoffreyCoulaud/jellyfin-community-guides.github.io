@@ -982,8 +982,21 @@ const questions = [
 	},
 ] as const satisfies readonly Question<RemoteAccessMethod>[];
 
+/** Something it serves gets no HTTPS from it. */
+const needsAReverseProxy = (method: RemoteAccessMethod) =>
+	(method.servesPublicServices && !method.handlesTlsForPublicServices) ||
+	!coversPrivateTls(method);
+
 /** The pages to read once a method is picked, which no question asks about. */
 const nextReads = (method: RemoteAccessMethod): Link[] => [
+	...(needsAReverseProxy(method)
+		? [
+				{
+					title: "Pick a reverse proxy for HTTPS",
+					href: "/quiz/reverse-proxy/",
+				},
+			]
+		: []),
 	...(method.needsDomain
 		? [{ title: "Get a domain name", href: "/reference/get-domain/" }]
 		: []),
